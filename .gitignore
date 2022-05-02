@@ -11,6 +11,7 @@
 *.cb
 *.cb2
 .*.lb
+OPT4ML.pdf
 
 ## Intermediate documents:
 *.dvi
