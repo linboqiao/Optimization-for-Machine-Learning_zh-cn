@@ -1,0 +1,108 @@
+\documentclass[11pt]{book}
+
+%\usepackage[margin=1in, paperwidth=6in, paperheight=9in]{geometry}
+
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+%\usepackage{latexsym}
+\usepackage{amssymb}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{algorithm,algorithmic}
+\usepackage{xspace}
+\usepackage{color}
+\usepackage{mathtools}
+\usepackage{enumerate}
+%\usepackage[numbers,comma,sort&compress]{natbib} 
+
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{application}[theorem]{Application}
+\newtheorem{optimizationproblem}[theorem]{Optimization~Problem}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{assumption}[theorem]{Assumption}
+
+\usepackage[utf8]{inputenc}
+\usepackage{CJKutf8}
+
+
+\widowpenalty10000
+\clubpenalty10000
+
+% the now document class sets various dimensions, so be sure to *not* set
+% or alter dimensions in your latex code.
+% be sure to remove all manual formatting commands such \newpage, \clearpage.
+
+% a few definitions that are *not* needed in general:
+\input{defs}
+
+\title{ 
+%{\it lecture notes: }   \\  Optimization for Machine Learning \\ 
+机器学习最优化讲义 \\ 
+
+{\small \it version 0.57}\\  \bigskip
+{\small All rights reserved.  }
+}
+
+\date{}
+\author{
+作者：Elad Hazan \thanks{\url{www.cs.princeton.edu/\~ehazan}}\\
+Princeton University, 
+ehazan@cs.princeton.edu\\ \\
+
+翻译：乔林波\\
+国防科技大学，qiao.linbo@nudt.edu.cn
+}
+
+\begin{document}
+\begin{CJK*}{UTF8}{gbsn}
+
+
+\frontmatter  % title page, contents, catalog information
+
+\maketitle
+
+
+
+\input{"preface.tex"}
+
+\tableofcontents
+
+\mainmatter
+
+
+\input{"chapter-notations.tex"}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Introduction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{"chapter01.tex"}
+%\input{"chapter2.tex"}
+%\input{"chapter3.tex"}
+%\input{"chapter4.tex"}
+%\input{"chapter5.tex"}
+%\input{"chapter6.tex"}
+%\input{"chapter7.tex"}
+%\input{"chapter8.tex"}
+%\input{"chapter9.tex"}
+%\input{"chapter10.tex"}
+%\input{"chapter11.tex"}
+
+\backmatter
+\bibliographystyle{plain}
+\bibliography{bookbib}
+
+%\appendix
+%\input{appendix}
+
+\end{CJK*}
+\end{document}

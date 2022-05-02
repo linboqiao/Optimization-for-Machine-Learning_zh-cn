@@ -1,0 +1,337 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Chapter 1: INTRODUCTION 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{
+    %Introduction
+    引言
+    }  \label{chap:intro}
+
+%The topic of this lecture series is the mathematical optimization approach to machine learning. 
+
+该系列讲义的主题是面向机器学习的数学优化方法。
+
+%In standard algorithmic theory, the burden of designing an efficient algorithm for solving a problem at hand is on the algorithm designer. In the decades since in the introduction of computer science, elegant algorithms have been designed for tasks ranging from finding the shortest path in a graph, computing the optimal flow in a network, compressing a computer file containing an image captured by digital camera, and replacing a string in a text document. 
+在标准的算法理论中，解决问题的高效求解算法的设计重担主要落在算法设计者身上。
+自计算机引入后的近二十年内，大量优雅的算法被设计出来，如：图中的最短路径寻找、网络中的最优流计算、数码相机中的图像压缩，以及文本文件中的字符串替换。
+
+%The design approach, while useful to many tasks, falls short of more complicated problems, such as identifying a particular person in an image in bitmap format, or translating text from English to Hebrew.  There may very well be an elegant algorithm for the above tasks, but the algorithmic design scheme does not scale. 
+虽然算法设计对很多任务的解决起到了帮助作用，但在更复杂的问题上做得不够好，如：在位图格式的图像中识别特定的人物、将英语翻译为中文。
+上述各个问题可能存在一个非常优雅的算法，但传统的算法设计框架并不能导出这样的算法。
+
+%As Turing promotes in his paper \cite{turing}, it is potentially easier to teach a computer to learn how to solve a task, rather than teaching it the solution for the particular tasks. In effect, that's what we do at school, or in this lecture series...
+正如图灵在他的论文\cite{turing}中提出的那样，相比于教会计算机针对各个具体任务的解法来说，教会计算机去学习如何解决一个问题，可能反而更为简单。
+实际上，这正是我们在学校里做的事情，或者，在这系列讲义里将做的。
+
+%The machine learning approach to solving problems is to have an automated mechanism for learning an algorithm. Consider the problem of classifying images into two categories: those containing cars and those containing chairs (assuming there are only two types of images in the world). In ML we train (teach) a machine to achieve the desired functionality. The same machine can potentially solve any algorithmic task, and differs from task to task only by a set of parameters that determine the functionality of the machine. This is much like the wires in a computer chip determine its functionality. Indeed, one of the most popular machines are artificial neural networks. 
+机器学习方法来解决问题有一个自动化的机制来学习一个算法。
+考虑一个问题，将部分图像分为两类：一部分是包含车的，一部分是包含椅子的（假设这个世界上仅有这两类图像）。
+在机器学习中，我们训练（教）一个机器来实现特定的功能。
+相同的机器潜在的可以解决任意算法任务，任务与任务之间的不同仅仅来自于机器中参数集合的不同，这里参数集合决定了机器的功能。
+这就好比计算机芯片内的连线决定了计算机的功能。
+实际上，一种最受欢迎的机器正是人工神经网络。
+
+%The mathematical optimization approach to machine learning is to view the process of machine training as an optimization problem. If we let $w \in \reals^d$ be the parameters of our machine (a.k.a. model), that are constrained to be in some set $\K \subseteq \reals^d$, and $f$ the function measuring success in mapping examples to their correct label, then the problem we are interested in is described by the mathematical optimization problem of 
+机器学习中的数学优化方法正是将机器的训练视为一个优化问题。
+如果我们用 $w \in \reals^d$ 表示我们的机器（也就是 模型）中的参数，这些参数由部分集合约束 $\K \subseteq \reals^d$，同时用 $f$ 来表示度量映射样本到正确标签的成功程度的函数，
+那么，我们感兴趣的问题则被表示为数学优化问题：
+
+\begin{equation} \label{eqn:MP}
+ \boxed{ \min_{w \in \K  } f (w)  }
+\end{equation}
+
+%This is the problem that the lecture series focuses on, with particular emphasis on functions that arise in machine learning and have special structure that allows for efficient algorithms. 
+上面就是本系列讲义关注的问题。特别强调的是在机器学习中使用的函数具有特殊的结构，以构造高效的算法。
+
+
+\section{
+    %Examples of optimization problems in machine learning
+    机器学习中优化问题示例
+    }
+
+\subsection{
+    %Empirical Risk Minimization
+    经验风险最小化
+    }
+
+%Machine learning problems exhibit special structure. For example, one of the most basic optimization problems in supervised learning is that of fitting a model to data, or examples, also known as the optimization problem  of Empirical Risk Minimization (ERM). The special structure of the problems arising in such formulations is separability across different examples into individual losses.  
+机器学习问题展现了特殊的结构。
+例如，有监督学习中一个最为基本的优化问题是将模型拟合到特定数据上，也就是大家所熟知的 风险最小化（ERM）优化问题。
+这类问题形式化形成的特殊结构是，将不同样本独立的加入到损失函数之中。
+
+%An example of such formulation is the supervised learning paradigm of linear classification.  In this model, the learner is presented with  positive and negative examples of a concept. Each example, denoted by $\ba_i$, is represented in Euclidean space by a $d$ dimensional feature vector. For example, a common representation for emails in the spam-classification problem  are binary vectors in Euclidean space, where the dimension of the space is the number of words in the language. The $i$'th email is a vector $\ba_i$ whose entries are given as ones for coordinates corresponding to words that appear in the email, and zero otherwise\footnote{Such a representation may seem na\"ive at first as it completely ignores the words' order of appearance and their context.  Extensions to capture these features are indeed studied in the Natural Language Processing literature.}. In addition, each example has a label  $b_i \in \{-1,+1\}$, corresponding to whether the email has been labeled spam/not spam. The goal is to find a hyperplane separating the two classes of vectors: those with positive labels and those with negative labels. If such a hyperplane, which completely  separates the training set according to the labels, does not exist, then the goal is to find a hyperplane that achieves a separation of the training set with the smallest number of mistakes. 
+这类形式的一个例子是，线性分类的有监督学习范式。
+这个形式化的模型中，学习器表现为一个概念的正负样本。
+一个样本记为 $\ba_i$ 表示为欧几里得空间中的 $d$ 维特征向量。
+例如，垃圾邮件分类问题中，邮件的一个典型表示是欧几里得空间中的二进制向量，其中，空间的维度是语言中单词的数量。
+第 $i$ 封邮件表示为向量 $\ba_i$，其元素也即是邮件中所出现的相应单词（存在相应单词，则向量中的元素设置为1），如何刻画这些特征的各种扩展则在自然语言处理相关文献中被深入研究。
+另外，每一个样本有一个标签 $b_i \in \{-1,+1\}$，与这封邮件是垃圾/不是垃圾邮件相对应。
+目标即是寻找一个超平面足以分割这两类向量：具有正标签和具有负标签的。
+如果不存在一个超平面可以完全分割训练集合的两类样本，则目标是寻找一个超平面实现分类错误的训练集合的数目最小。
+
+%Mathematically speaking, given a set of $m$ examples to train on, we seek $\x \in \reals^d$ that minimizes the number of incorrectly classified examples, i.e.
+数学上讲，给定一个$m$个样本的集合用于训练，我们寻找 $\x \in \reals^d$ 以最小化错误分类样本数量，例如：
+
+\begin{equation} \label{eqn:linear-classification}
+\min_{\x \in \reals^d}  \frac{1}{m} \sum_{i \in [m]}  \delta( \sign(\x^\top \ba_i ) \neq b_i)  
+\end{equation}
+%where $\sign(x) \in \{-1,+1\}$ is the sign function, and $\delta(z) \in \{0,1\}$ is the indicator function that takes the value $1$ if the condition $z$ is satisfied and zero otherwise.
+其中，$\sign(x) \in \{-1,+1\}$ 是符号函数，$\delta(z) \in \{0,1\}$ 是示性函数，当条件 $z$满足时取值 $1$，否则取值为 0。
+
+%The mathematical formulation of the linear classification above is a special case of mathematical programming \eqref{eqn:MP}, in which 
+上面线性分类的数学形式化是数学规划问题 \eqref{eqn:MP} 的一个特例，其中：
+$$f(\x) = \frac{1}{m} \sum_{i \in [m]}  \delta( \sign(\x^\top \ba_i ) \neq b_i)  = \E_{i \sim [m]} [ \ell_i(\x)]  ,$$
+%where we make use of the expectation operator  for simplicity, and denote $\ell_i(\x)  = \delta( \sign(\x^\top \ba_i ) \neq b_i)$ for brevity. Since the program above is non-convex and non-smooth, it is common to take  a convex relaxation and replace $\ell_i$ with convex loss functions. Typical choices include the means square error function and the hinge loss, given by
+其中，我们使用期望算子以化简，用 $\ell_i(\x)  = \delta( \sign(\x^\top \ba_i ) \neq b_i)$ 简化。
+因为上述的规划问题是非凸非平滑的，常见的做法是做一个凸松弛，将 $\ell_i$ 替换为凸损失函数。
+典型的选择包括均方误差函数和合页损失，公式为：
+$$ \ell_{\ba_i, b_i } (\x) = \max\{ 0, 1 - b_i \cdot \x^\top \ba_i \} . $$
+
+%This latter loss function in the context of binary classification gives rise to the popular soft-margin SVM problem. 
+后者损失函数在二分类的相关研究中产生了广受关注的软间隔 SVM 问题。
+
+%The expectation formulation turns out to have significant implications for the design of efficient stochastic algorithms.
+期望函数的形式对高效随机算法的设计具有显著的影响。
+
+%Another important optimization problem is that of training a deep neural network for binary classification. For example, consider a dataset of images, represented in bitmap format and denoted by $\{ \ba_i \in \reals^{d}  | i \in [m]\}$, i.e. $m$ images over $n$ pixels. We would like to find a mapping from images to the two categories, $\{b_i \in \{0,1\} \}$ of cars and chairs. The mapping is given by a set of parameters of a machine class, such as weights in a neural network, or values of a support vector machine. We thus try to find the optimal parameters that match $\ba_i$ to $b$, i..e 
+另外一个重要的优化问题是深度神经网络的二分类训练。
+例如，考虑一个以位图格式表示的图像数据集，记为 $\{ \ba_i \in \reals^{d}  | i \in [m]\}$。
+$m$ 张图像 $n$ 个像素。
+我们希望寻找一个从图像到其类别的映射，$\{b_i \in \{0,1\} \}$ 分别对应汽车和椅子。
+映射由一个机器类的参数集合确定，如神经网络中的权值，或者SVM的值。
+我们因此可以寻找将$\ba_i$匹配到$b$的最佳参数：
+$$ \min_{\w \in \reals^d} f(\w) =  \E_{ \ba_i , b_i } \left[ \ell( f_\w (\ba_i) , b_ i ) \right]  . $$ 
+
+
+
+
+\subsection{
+    %Matrix completion and recommender systems
+    矩阵补全与推荐系统
+    }
+
+
+%Media recommendations have changed significantly with the advent of the Internet and rise of online media stores. The large amounts of data collected allow for efficient clustering and accurate prediction of users' preferences for a variety of media. A well-known example is the so called ``Netflix challenge''---a competition of automated tools for recommendation from a large dataset of users' motion picture preferences. 
+信息推荐随着互联网的到来和在线媒体商店的兴起已经产生了巨大的改变。
+收集到的大量数据使得各种媒体的高效的聚类和精准的用户偏好预测成为可能。
+一个众所周知的例子是“Netflix 挑战赛”，这个挑战赛使用自动化的工具从大量的数据集中预测用户偏好的电影。
+
+%One of the most successful approaches for automated recommendation systems, as proven in the Netflix competition, is matrix completion. Perhaps the simplest version of the problem can be described as follows. 
+自动化推荐系统最为成功的方法之一是矩阵补全，也由Netflix挑战赛所验证。
+也许该问题最简单的版本可以描述如下。
+
+%The entire dataset of user-media preference pairs is thought of as a partially-observed matrix. Thus, every person is represented by a row in the matrix, and every column represents a media item (movie). For simplicity, let us think of the observations as binary---a person either likes or dislikes a particular movie. Thus, we have a matrix $M \in \{0,1,*\}^{n \times m}$  where $n$ is the number of persons considered, $m$ is the number of movies at our library, and $0/1$ and $*$ signify ``dislike'', ``like'' and ``unknown'' respectively:
+用户-媒体偏好对所组成的整个数据集可以视为一个部分观测的矩阵。
+因此，每一个用户表示为矩阵中的一行，每一个电影媒体表示为矩阵中的一个列。
+简化问题，假设观测值是二值的（一个用户对一个电影或者喜欢，或者不喜欢），这样我们就有一个矩阵  $M \in \{0,1,*\}^{n \times m}$  其中  $n$ 是考虑的用户数量，$m$ 是我们收藏库里包含的电影数量，$0/1$、$*$ 分别意味着 “不喜欢”、“喜欢”和“未知”。
+$$ M_{ij} = \mythreecases {0}{\mbox{用户 $i$ 不喜欢电影 $j$}}{1}{\mbox{用户 $i$ 喜欢电影 $j$}}{*}{\mbox{偏好未知}} $$ 
+
+%The natural goal is to complete the matrix, i.e. correctly assign $0$ or $1$ to the unknown entries. As defined so far, the problem is ill-posed, since any completion would be equally good (or bad), and no restrictions have been placed on the completions.
+一个自然的目标是矩阵补全，将未知的元素赋予 $0$ 或者 $1$。
+正如此前定义的，这个问题是病态的，因为任何补全是同等好或者坏的，并且补全过程没有施加任何限制。
+
+%The common restriction on completions is that the ``true'' matrix has low rank. Recall that if a matrix $X \in \reals^{n \times m}$ has rank $k \leq \rho = \min \{n,m\} $ then it can be written as 
+补全过程中，典型的限制是“真实”的矩阵是低秩的。
+注意到如果一个矩阵 $X \in \reals^{n \times m}$ 具有秩  $k \leq \rho = \min \{n,m\} $ ，则可以被写为：
+$$ X = U V \ , \ U \in \reals^{n \times k} , V \in \reals^{k \times m}.  $$
+
+%The intuitive interpretation of this property is that each entry in $M$ can be explained by only $k$ numbers. In matrix completion this means, intuitively, that there are only $k$ factors that determine a persons preference over movies, such as genre, director, actors and so on. 
+这个性质直观的解释是矩阵 $M$ 中每一个元素可以由仅仅 $k$ 个数解释。
+在矩阵补全中，这意味着，直观上，这里仅有 $k$ 个因素决定一个用户对电影的偏好，如 类别、导演、演员等。
+
+%Now the simplistic matrix completion problem can be well-formulated as in the following mathematical program. Denote by $\| \cdot \|_{OB}$ the Euclidean norm only on the observed (non starred) entries of $M$, i.e.,
+现在最简单的矩阵补全问题可以明确的形式化为如下的数学规划问题。
+使用 $\| \cdot \|_{OB}$ 表示在 $M$ 的观测元素上的欧几里得范数
+$$\|X\|_{OB}^2 = \sum_{M_{ij} \neq *} X_{ij}^2.$$ 
+%The mathematical program for matrix completion is given by
+那么，这个矩阵补全的数学规划问题可以表述为：
+\begin{align*}
+& \min_{X \in \reals^{n \times m} } \frac{1}{2} \| X - M \|_{OB}^2 \\
+& \text{s.t.} \quad \rank(X) \leq k. 
+\end{align*}  
+
+
+
+\subsection{
+    %Learning in Linear Dynamical Systems
+    线性动力学系统中的学习问题
+    } 
+
+
+%Many learning problems require memory, or the notion of state. This is captured by the paradigm of reinforcement learning, as well of the special case of control in Linear Dynamical Systems (LDS). 
+许多学习问题需要内存，或者状态的概念。
+这可以刻画为强化学习的范式，正如线性动力学系统 (LDS) 中控制的特殊实例。
+
+%LDS model a variety of control and robotics problems in continuous variables. The setting is that of a time series, with following parameters:
+LDS 对一大类控制和机器人问题在连续变量上建模。
+基本设置是，一个时间序列具有如下的参数：
+\begin{enumerate}
+\item
+%Inputs to the system, also called controls, denoted by $\uv_1,...,\uv_T \in \reals^n$. 
+系统的输入，也称为控制，表示为  $\uv_1,...,\uv_T \in \reals^n$。
+\item
+%Outputs from the system, also called observations, denoted $\y_1,...,\y_T \in \reals^m$.
+系统的输出，也称为观测，表示为 $\y_1,...,\y_T \in \reals^m$。
+\item
+%The state of the system, which may either be observed or hidden, denoted $\x_t,...,\x_T \in \reals^d$.
+系统的状态，有可能被观测到也有可能是隐藏的，表示为  $\x_t,...,\x_T \in \reals^d$。
+\item
+%The system parameters, which are transformations matrices $\bA,\bB,\bC,\bD$ in appropriate dimensions. 
+系统的参数，也即是适当维度的变换矩阵 $\bA,\bB,\bC,\bD$ 。
+\end{enumerate}
+
+
+%In the online learning problem of LDS, the learner iteratively observes $\uv_t,\y_t$, and has to predict $\hat{\y}_{t+1}$.  The actual $\y_t$ is generated according to the following dynamical equations:
+LDS 的在线学习问题中，学习器迭代式的观测  $\uv_t,\y_t$，然后预测  $\hat{\y}_{t+1}$。
+实际的 $\y_t$ 根据如下的动力学方程产生：
+\begin{align*}
+& \x_{t+1} = \bA \x_t + \bB \uv_t + \epsilon_t \\
+& \y_{t+1} = \bC \x_{t+1} + \bD \uv_t + \zeta_t  , 
+\end{align*}
+%where $\epsilon_t,\zeta_t$ are noise which is distributed as a Normal random variable. 
+其中， $\epsilon_t,\zeta_t$ 是分布为正态随机变量的噪声。
+
+%Consider an online sequence in which the states are visible. At time $t$, all system states, inputs and outputs are visible up to this time step. The learner has to predict $\y_{t+1}$, and only afterwards observes $\uv_{t+1}.\x_{t+1},\y_{t+1}$. 
+考虑到在线序列中状态是可见的。
+在时刻 $t$，此前系统的所有状态、输入和输出是可见的。
+学习器预测 $\y_{t+1}$，并仅观测 $\uv_{t+1}.\x_{t+1},\y_{t+1}$。
+
+%One reasonable way to predict $\y_{t+1}$ based upon past observations is to compute the system, and use the computed transformations to predict. This amounts to solving the following mathematical program: 
+预测 $\y_{t+1}$ 的一个合理方式是基于过往观测值来计算系统，并使用计算所得的变换矩阵来预测。
+这相当于解决下面的数学规划：
+$$ \min_{\bA,\bB,\hat{\bC},\hat{\bD}} \left\{  \sum_{\tau < t }  ( \x_{\tau+1} - \bA \x_\tau + \bB \uv_\tau )^2 + (\y_{\tau+1} - \hat{\bC} \x_\tau + \hat{\bD} \uv_\tau )^2 \right \} , $$
+%and then predicting 
+然后预测
+$\hat{\y}_{t+1} = \hat{\bC} \hat{\bA} (\x_t + \bB \uv_t)  + \hat{\bD} \uv_t$.
+
+
+\section{
+    %Why is mathematical programming hard?
+    为什么数学规划困难？
+    } 
+
+%The general formulation \eqref{eqn:MP} is NP hard. To be more precise, we have to define the computational model we are working in as well as and the access model to the function. 
+一般形式的\eqref{eqn:MP}是NP难的。更准确地说，我们必须定义我们正在使用的计算模型以及函数的访问模型。
+
+%Before we give a formal proof, the intuition to what makes mathematical optimization hard is simple to state. In one line: it is the fact that global optimality cannot be verified on the basis of local properties. 
+在我们给出一个正式的证明之前，直觉上让数学优化困难的原因是很容易陈述的。
+一句话：事实是，不能根据局部性质来验证全局最优性。
+
+%Most, if not all, efficient optimization algorithms are iterative and based on a local improvement step. By this nature, any optimization algorithm will terminate when the local improvement is no longer possible, giving rise to a proposed solution. However, the quality of this proposed solution may differ significantly, in general, from that of the global optimum. 
+大多数（如果不是全部的话）有效的优化算法都是迭代式的，基于每一个局部改进的子步骤。
+根据这种性质，当局部改进不再可能时，任何优化算法都将终止，从而产生一个建议的解决方案。
+然而，通常来说，该方案的质量可能与全局最优方案的质量存在显著差异。
+
+%This intuition explains the need for a property of objectives for which global optimality is locally verifiable. Indeed, this is exactly the notion of {\bf convexity}, and the reasoning above explains its utmost importance in mathematical optimization. 
+这种直觉解释了目标特性是需要的，对于这些特性，全局最优性是局部可验证的。
+事实上，这正是{\bf 凸性}的概念，上面的推理解释了它在数学优化中的极端重要性。
+
+%We now to prove that mathematical programming is NP-hard. This requires discussion of the computational model as well as access model to the input. 
+现在我们来证明数学规划是NP难的。
+这需要讨论计算模型以及输入的访问模型。
+
+\subsection{
+    %The computational model
+    计算模型
+    }
+
+%The computational model we shall adopt throughout this manuscript is that of a RAM machine equipped with oracle access to the objective function $f: \reals^d \mapsto \reals$ and constraints set $\K \subseteq \reals^d$. The oracle model for the objective function can be one of the following, depending on the specific scenario:
+在本文中，我们将采用的计算模型是一台RAM机器，该机器配有能力先知访问目标函数 $f: \reals^d \mapsto \reals$和约束集  $\K \subseteq \reals^d$。
+目标函数的先知模型可以是以下之一，具体取决于具体场景：
+
+
+\begin{enumerate}
+\item
+{\bf Value oracle: } 
+%given a point $x \in \reals^d$, oracle returns $f(x) \in \reals$. 
+给定一个点  $x \in \reals^d$，先知返回 $f(x) \in \reals$。
+\item
+{\bf Gradient (first-order) oracle: } 
+%given a point $x \in \reals^d$, oracle returns the gradient $\nabla f(x) \in \reals^d$. 
+给定一个点 $x \in \reals^d$，先知返回梯度 $\nabla f（x）\in\reals^d$。
+\item
+{\bf $k$-th order differential oracle: } 
+%given a point $x \in \reals^d$, oracle returns the tensor $\nabla^k f(x) \in \reals^{d^k} $. 
+给定一个点 $x \in \reals^d$，先知返回张量 $\nabla^k f（x）\in \reals^{d^k}$。
+\end{enumerate}
+
+%The oracle model for the constraints set is a bit more subtle. We distinguish between the following oracles:
+约束集的先知模型更微妙一些。我们区分以下先知：
+\begin{enumerate}
+\item
+{\bf Membership oracle: }
+%given a point $x \in \reals^d$, oracle returns one if $x \in \K$ and zero otherwise. 
+给定一个点 $x \in \reals^d$，如果 $x \in \K$，先知返回 $1$，否则返回零。
+\item
+{\bf Separating hyperplane oracle: }
+%given a point $x \in \reals^d$, oracle either returns "Yes" if $x \in \K$, or otherwise returns a hyperplane $h \in \reals^d$ such that $ h^\top x > 0 $ and $ \forall y \in \K \ , \  h^\top y \leq 0$. 
+给定一个点$x \in \reals^d$，如果$x\in\K$，先知要么返回“Yes”，否则返回一个超平面$h \in \reals^d$，使得 $h^\top x>0$ 且 $\forall y\in\K\, \h^\top y\leq 0$。
+\item
+{\bf Explicit sets: } 
+%the most common scenario in machine learning is one in which $\K$ is ``natural", such as the Euclidean ball or hypercube, or the entire Euclidean space. 
+机器学习中最常见的场景是 $\K$ 是“自然的”，例如欧几里德球或超立方体，或整个欧几里德空间。
+\end{enumerate}
+
+
+
+\subsection{
+    %Hardness of constrained mathematical programming
+    约束数学规划的困难性
+    }
+
+%Under this computational model, we can show:
+在这个计算模型下，我们可以有：
+\begin{lemma}
+%Mathematical programming is NP-hard, even for a convex continuous constraint set $\K$ and quadratic objective functions. 
+数学规划室 NP-难的，即使对于凸连续约束集合 $\K$ 和 二次目标函数也是的。
+\end{lemma}
+\begin{proof}[
+%Informal sketch
+非正式概述
+]
+%Consider the MAX-CUT problem: given a graph $G = (V,E)$, find a subset of the vertices that maximizes the number of edges cut. Let $A$ be the negative adjacency matrix of the graph, i.e. 
+考虑最大割问题：给定一个图 $G=(V,E)$，寻找一个节点的子集使得边的切割最大化。
+让 $A$ 是图的负邻接矩阵：
+$$ A_{ij} = \mycases {-1} {(i,j) \in E}{0}{o/w} $$
+%Also suppose that
+同时假设
+$A_{ii} = 0$. 
+
+%Next, consider the mathematical program: 
+然后，考虑数学规划问题：
+\begin{align}\label{eqn:first-max-cut}
+\min  \left\{ f_A(\x) = \frac{1}{4} ( \x^\top A \x  - 2 |E| ) \right\} \\
+\|\x\|_\infty = 1  \ .  \notag
+\end{align}
+%Consider the cut defined by the solution of this program, namely 
+考虑这个规划问题定义的割，也即：
+$$ S_{\x}  = \{ i \in V |  \x_i = 1 \}  , $$
+%for 
+其中，$\x = \x^\star$. 
+%Let $C(S)$ denote the size of the cut specified by the subset of edges $S \subseteq E$.
+令 $C(S)$ 表示边的子集所确定的割的大小。 
+%Observe that the expression $\frac{1}{2} \x ^\top A \x$, is exactly equal to the number of edges that are cut by $S_\x$ minus the number of edges that are uncut. Thus, we have
+观察到表达式  $\frac{1}{2} \x ^\top A \x$ 精确等价于被 $S_\x$ 所分割的遍的数目 减去未被分割的边的数目。因此，我们有：
+$$ \frac{1}{2}  \x A \x =  C(S_\x) -  (E - C(S_\x)) = 2 C(S_\x) - E , $$
+%and hence $f(\x) = C(S_\x)$. Therefore, maximizing $f(\x)$ is equivalent to the MAX-CUT problem, and is thus NP-hard. We proceed to make the constraint set convex and continuous. Consider the mathematical program
+以及 $f(\x) = C(S_\x)$。
+因此，最大化  $f(\x)$ 就等于最大化割问题，这是 NP-难的。
+我们进一步让约束集合凸且连续的，考虑数学规划问题：
+\begin{align} \label{eqn:second-max-cut}
+\min  \left \{  f_A(\x)  \right\} \\
+\|\x\|_\infty \leq 1 \ .  \notag
+\end{align}
+%This is very similar to the previous program, but we relaxed the equality to be an inequality, consequently the constraint set is now the hypercube. We now claim that the solution is w.l.o.g. a vertex. To see that, consider $\y(\x) \in \{ \pm 1\}^d$ a rounding of $\x$ to the corners defined by:
+这与之前的规划问题很类似，但我们将等式约束放松为一个不等式约束，然后约束集合现在是超立方体。
+不失一般性，我们现在可以声称这个解是一个顶点。
+比如，考虑 $\y(\x) \in \{ \pm 1\}^d$ 是 $\x$ 的一个到转角的舍入，定义为：
+$$ \y_i =  \y(\x)_i = \mycases { 1 } { w.p. \frac{1 + \x_i}{2} } {-1} {w.p. \frac{1- \x_i}{2} }  $$ 
+%Notice that 
+注意到：
+$$ \E[ \y] = \x \ , \  \forall i \neq j \  . \ \E[ \y_i \y_j] = \x_i \x_j , $$
+%and therefore
+因此，
+$\E[ \y(\x) ^\top A \y(\x) ] = \x^\top A \x $. 
+%We conclude that the optimum of mathematical program \ref{eqn:second-max-cut} is the same as that for \ref{eqn:first-max-cut}, and both are NP-hard. 
+我们可以得到数学规划 \ref{eqn:second-max-cut} 的最优解与  \ref{eqn:first-max-cut} 相同，都是NP-难的。
+\end{proof}
