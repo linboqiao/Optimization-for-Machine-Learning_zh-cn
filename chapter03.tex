@@ -1,0 +1,252 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Gradient methods
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{
+    %Stochastic Gradient Descent
+    随机梯度下降
+    } \label{chapter:SGD}
+
+
+%The most important optimization algorithm in the context of machine learning is stochastic gradient descent (SGD), especially for non-convex optimization and in the context of deep neural networks.  In this chapter we spell out the algorithm and analyze it up to tight finite-time convergence rates.
+机器学习中最重要的优化算法是随机梯度下降（SGD），尤其是在非凸优化和深层神经网络中。在本章中，我们详细说明该算法，并分析了它的有限时间收敛速度。
+
+\section{
+    %Training feedforward neural networks
+    前馈神经网络训练
+    }
+
+%Perhaps the most common optimization problem in machine learning is that of training feedforward neural networks. In this problem, we are given a set of labelled data points, such as labelled images or text.  
+%Let $\{\x_i, y_i\}$ be the set of labelled data points, also called the training data. 
+也许机器学习中最常见的优化问题是训练前馈神经网络。在这个问题中，我们有一组带标签的数据点，例如带标签的图像或文本。
+设$\{\x_i,y_i\}$为标注数据点集，也称为训练数据。
+
+%The goal is to fit the weights of an artificial neural network in order to minimize the loss over the data. Mathematically, the feedforward network is a given weighted a-cyclic graph $G = (V,E,W)$. Each node $v$ is assigned an activation function, which we assume is the same function for all nodes, denoted $\sigma: \reals^d \mapsto \reals$.  
+%Using a biological analogy, an activation function $\sigma$ is a function that determines how strongly a neuron (i.e. a node) `fires' for a given input by mapping the result into the desired range, usually $[0,1]$ or $[-1, 1]$ . Some popular examples include:
+其目标是拟合人工神经网络的权重，以最大限度地减少数据损失。从数学上讲，前馈网络是一个给定的加权无环图 $G=(V,E,W)$。
+对每个节点 $v$ 都分配了一个激活函数，假设所有节点的激活函数都相同，表示为 $\sigma: \reals^d \mapsto \reals$。
+使用生物学类比，激活函数 $\sigma$ 它通过将结果映射到所需范围（通常为 $[0,1]$或 $[-1,1]$）来确定神经元（即节点）“激发”给定输入的强度。一些被广泛使用的例子包括：
+\begin{itemize}
+\item Sigmoid: $\sigma(x) = \frac{1}{1 + e^{-x}}$
+\item Hyperbolic tangent: $\tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}$
+\item Rectified linear unit: $ReLU(x) = \max\{0, x\}$ (currently the most widely used of the three) 
+\end{itemize}
+
+%The inputs to the input layer nodes is a given data point, while the inputs to to all other nodes are the output of the nodes connected to it. We denote by $\rho(v)$ the set of input neighbors to node $v$. The top node output is the input to the loss function, which takes its ``prediction" and the true label to form a loss. 
+输入层节点的输入是一个给定的数据点，而所有其他节点的输入是与其连接的节点的输出。我们用$\rho(v)$表示节点$v$的输入邻居集。顶部节点的输出是损失函数的输入，损失函数采用“预测值”和真实标签来形成损失。
+
+%For an input node $v$,  its output as a function of the graph weights and input example $\x$ (of dimension $d$), which we denote as 
+对于输入节点 $v$，它的输出是图形权重和输入样本 $\x$（维度为$d$）的函数，我们将其表示为
+$$ v(W,\x) = \sigma \left( \sum_{i \in d} W_{v,i} \x_i \right) $$
+%The output of an internal node $v$ is a function of its inputs $u \in \rho(v)$ and a given example $\x$, which we denote as 
+内部节点$v$的输出是其输入 $u \in \rho(v)$和给定样本 $\x$的函数，我们将其表示为
+$$ v( W,\x ) = \sigma  \left(  \sum_{u \in \rho(v)}  W_{uv} u(W,\x) \right)  $$
+%If we denote the top node as $v^{1}$, then the loss of the network over data point $(\x_i,y_i)$ is given by
+如果我们将顶部节点表示为 $v^{1}$，那么网络在数据点 $(\x_i,y_i)$上的损失由
+$$ \ell(   v^{1} (W,\x_i) , y_i ) . $$
+%The objective function becomes
+目标函数为
+$$f(W) =  \E_{\x_i,y_i} \left[ \ell( v^{1} (W,\x_i) , y_i)  \right]  $$
+
+%For most commonly-used activation and loss functions, the above function is non-convex. However, it admits important computational properties. The most significant property is given in the following lemma.
+对于最常用的激活和损失函数，上述函数是非凸函数。然而，它拥有重要的计算性质。下面的引理给出了最重要的性质。
+\begin{lemma}[Backpropagation lemma]
+%The gradient of $f$ can be computed in time $O(|E|)$. 
+$f$ 的梯度可以在 时间 $O(|E|)$ 内计算得到。
+\end{lemma}
+
+
+%\ignore{
+%The proof of this lemma is left as an exercise, but we sketch the main ideas. 
+%For every variable $W_{uv}$, we have by linearity of expectation that 
+这个引理的证明只是一个练习，但我们要概述一下主要观点。
+对于每个变量 $W_{uv}$，我们通过期望的线性
+$$ \frac{\partial }{\partial W_{uv} } f (W) =   \E_{\x_i,y_i} \left[ \frac{\partial}{\partial W_{uv} }  \ell( v^{1} (W,\x_i) , y_i)  \right] . $$
+%Next,  using the chain rule, we claim that it suffices to know the partial derivatives of each node w.r.t. its immediate daughters. To see this, let us write the derivative w.r.t. $W_{uv}$ using the chain rule:
+接下来，使用链式规则，可以发现它足以获得每个节点关于其直系子节点的偏导数。为了了解这一点，让我们使用链式规则写出关于 $W_{uv}$ 的导数：
+\begin{align*}
+ \frac{\partial }{\partial W_{uv} }  \ell( v^{1} (W,\x_i) , y_i)   & = \frac{\partial \ell }{\partial v^1 } \cdot  \frac{\partial v^1}{\partial W_{uv} } \\
+& =  \frac{\partial \ell }{\partial v^1 } \cdot \sum_{v^2 \in \rho(v^1) }  \frac{\partial v^1}{\partial v^2 } \cdot   \frac{\partial v_j}{\partial W_{uv}} = ... \\
+& =  \frac{\partial \ell }{\partial v^1 } \cdot \sum_{v^2 \in \rho(v^1) }  \frac{\partial v^1}{\partial v^2 } \cdot ... \cdot \sum_{v_j^k \in \rho(v^{k-1}) }  \cdot  \frac{\partial v^{k} }{\partial W_{uv}}  \\
+\end{align*}
+
+%We conclude that we only need to obtain the $E$ partial derivatives along the edges in order to compute all partial derivatives of the function. The actual product at each node can be computed by a dynamic program in linear time. 
+我们的结论是，我们只需要获得沿边的 $E$偏导数，就可以计算函数的所有偏导数。每个节点的实际乘积可以通过动态规划在线性时间内计算。
+%}
+
+
+
+\section{
+    %Gradient descent for smooth optimization
+    光滑优化的梯度下降法
+    }
+
+
+%Before moving to stochastic gradient descent, we consider its deterministic counterpart: gradient descent, in the context of smooth non-convex optimization. Our notion of solution is a point with small gradient, i.e. $ \| \nabla f(\x) \| \leq \eps$. 
+在转向随机梯度下降之前，我们考虑它的确定性算法：梯度下降（在光滑非凸优化的背景下）。我们的解的概念是一个具有小梯度的点，即 $ \| \nabla f(\x) \| \leq \eps$。
+
+%As we prove below, this requires $O(\frac{1}{\eps^2})$ iterations, each requiring one gradient computation. Recall that gradients can be computed efficiently, linear in the number of edges, in feed forward neural networks. Thus, the time to obtain a $\eps$-approximate solution becomes $O( \frac{|E| m}{\eps^2}) $ for neural networks with $E$ edges and over $m$ examples. 
+正如我们在下面证明的，这需要 $O(\frac{1}{\eps^2})$ 迭代，每个迭代都需要一次梯度计算。回想一下，在前馈神经网络中，梯度可以有效地计算，边数是线性的。因此，对于具有 $E$边和超过 $m$样本的神经网络，获得 $\eps$近似解的时间变为$O( \frac{|E| m}{\eps^2}) $。
+
+\begin{algorithm}[h!]
+\caption{ 
+    %Gradient descent
+    梯度下降
+    }
+\label{alg:BasicGD}
+\begin{algorithmic}[1]
+\STATE Input: $f$, $T$, initial point $\x_1 \in \K$, sequence of step sizes $\{\eta_t\}$
+\FOR {$t=1$ to $T$}
+\STATE Let $ \y_{t+1} = \x_{t}-\eta_t {\nabla f}(\x_t) , \  \x_{t+1}= \proj_{\K} \left( \y_{t+1}  \right) $
+%\STATE Let  $x_{t+1}= \min_{x\in\mathcal{K}} |x-y_{t+1}|$
+\ENDFOR
+\RETURN ${\x}_{T+1} $ 
+\end{algorithmic}
+\end{algorithm}
+
+%Although the choice of $\eta_t$ can make a difference in practice, in theory the convergence of the vanilla GD algorithm is well understood and given in the following theorem. Below we assume that the function is bounded such that $ |f(\x) | \leq M$. 
+虽然 $\eta_t$的选择在实践中可能会产生不同，但在理论上，普通GD算法的收敛性已被充分理解，并在以下定理中给出。下面我们假设函数是有界的，因此 $ |f(\x) | \leq M$。
+
+\begin{theorem} \label{thm:basicGDunconstrained}
+%For unconstrained minimization of $\beta$-smooth functions and $\eta_t = \frac{1}{\beta} $,  GD Algorithm \ref{alg:BasicGD} converges as
+对于$\beta$-光滑函数和 $\eta_t=\frac{1}{\beta}$的无约束极小化，GD算法\ref{alg:BasicGD}收敛为
+$$ \frac{1}{T} \sum_t \| \nabla_t  \|^2 \leq  \frac{4 M \beta}{T} .$$
+\end{theorem}
+\begin{proof}
+%Denote by $\nabla_t$ the shorthand for  $\nabla f(\x_t)$, and $h_t = f(\x_t) - f(\x^*)$. The {\bf Descent Lemma} is given in the following simple equation, 
+用 $\nabla_t$表示 $\nabla f(\x_t)$ 和  $h_t = f(\x_t) - f(\x^*)$。{\bf 下降引理}在下面的简单方程中给出，
+\begin{align*}
+h_{t+1} - h_t & =  f(\x_{t+1})  - f(\x_t) \\
+& \le   \nabla_t^\top (\x_{t+1} - \x_t) + \frac{\beta}{2} \|\x_{t+1} - \x_t\|^2 & \text{ $\beta$-smoothness} \\
+& =  - \eta_t \|\nabla_t \|^2 + \frac{\beta}{2} \eta_t^2  \|\nabla_t\|^2 & \text{ algorithm defn.} \\
+& =  - \frac{1}{2\beta} \|\nabla_t \|^2  & \text{ choice of $\eta_t=\frac{1}{\beta}$} 
+\end{align*}
+%Thus, summing up over $T$ iterations, we have 
+因此，将 $T$ 次迭代求和，我们有
+\begin{eqnarray*}
+ \frac{1}{2\beta} \sum_{t=1}^T \|\nabla_t \|^2 \leq \sum_t (h_t - h_{t+1}) =  h_1 - h_{T+1} \leq  2 M
+\end{eqnarray*}
+\end{proof}
+
+
+%For convex functions, the above theorem implies convergence in function value due to the following lemma, 
+对于凸函数，由于下列引理，上述定理意味着函数值收敛，
+\begin{lemma}
+%A convex function satisfies 
+一个凸函数满足
+$$ h_t \leq D \| \nabla_t \|  ,   $$
+%and an $\alpha$-strongly convex function satisfies
+，一个 $\alpha$-强凸的函数满足
+$$ h_t \leq  \frac{1}{2 \alpha} \|\nabla_t\|^2 .   $$
+\end{lemma}
+\begin{proof}
+%The gradient upper bound for convex functions gives
+凸函数的梯度上界为
+$$ h_t \leq \nabla_t ( \x^* - \x_t) \leq D  \| \nabla_t \|  $$
+
+%The strongly  convex case appears in Lemma \ref{lem:elementary_properties}.
+强凸函数的情况在Lemma \ref{lem:elementary_properties} 中讨论。
+
+\end{proof}
+
+
+
+
+
+\section{
+    %Stochastic gradient descent
+    随机梯度下降
+    }
+
+%In the context of training feed forward neural networks, the key idea of Stochastic Gradient Descent is to modify the updates to be:
+在训练前馈神经网络的背景下，随机梯度下降的关键思想是将更新修改为：
+
+\begin{equation}
+W_{t+1} = W_t - \eta \, \widetilde{\nabla}_t
+\end{equation}
+%where $\widetilde{\nabla}_t$ is a random variable with $\E[\widetilde{\nabla}_t] = \nabla \, \textit{f} \, (W_t)$ and bounded second moment  $\E[\|\widetilde{\nabla}_t\|_2^2] \leq \sigma^2$. 
+其中 $\widetilde{\nabla}t$ 是一个随机变量，其中  $\E[\widetilde{\nabla}_t] = \nabla \, \textit{f} \, (W_t)$ 和有界二阶矩 $\E[\|\widetilde{\nabla}_t\|_2^2] \leq \sigma^2$。
+
+%Luckily, getting the desired $\widetilde{\nabla}_t$ random variable is easy in the posed problem since the objective function is already in expectation form so:
+幸运的是，在所提出的问题中，获得所需的 $\widetilde{\nabla}t$ 随机变量很容易，因为目标函数已经是期望形式，所以：
+\begin{center}
+$\nabla \textit{f}(W) = \nabla \E\limits_{\x_i, y_i} [\ell(v^1(W, \x_i), y_i)] = \E\limits_{\x_i, y_i} [\nabla \ell(v^1(W, \x_i), y_i)]$.
+\end{center}
+
+%Therefore, at iteration $t$ we can take $\widetilde{\nabla}_t = \nabla \ell(v^1(W, \x_i), y_i)$ where $i \in \{1,..., m\}$ is picked uniformly at random.  Based on the observation above, choosing $\widetilde{\nabla}_t $ this way preserves the desired expectation. So, for each iteration we only compute the gradient w.r.t. to one random example instead of the entire dataset, thereby drastically improving performance for every step. It remains to analyze how this impacts convergence.
+因此，在迭代 $t$中，我们可以取 $\widetilde{\nabla}_t = \nabla \ell(v^1(W, \x_i), y_i)$，其中，$i \in \{1,..., m\}$ 是均匀随机选取的。根据以上观察，以这种方式选择 $\widetilde{\nabla}_t $ 可以保持期望的结果。因此，对于每次迭代，我们只计算一个随机样本的梯度，而不是整个数据集，从而大大提高了每一步的性能。接下来还有待分析这对融合的影响。
+\begin{algorithm}[h!]
+\caption{
+    %Stochastic gradient descent
+    随机梯度下降
+    }
+\label{alg:BasicSGD}
+\begin{algorithmic}[1]
+\STATE Input: $f$, $T$, initial point $\x_1 \in \K$, sequence of step sizes $\{\eta_t\}$
+\FOR {$t=1$ to $T$}
+\STATE Let $ \y_{t+1} = \x_{t}-\eta_t {\nabla f}(\x_t) , \  \x_{t+1}= \proj_{\K} \left( \y_{t+1}  \right) $
+%\STATE Let  $x_{t+1}= \min_{x\in\mathcal{K}} |x-y_{t+1}|$
+\ENDFOR
+\RETURN ${\x}_{T+1} $ 
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\begin{theorem} \label{thm:non-convex-sgd}
+%For unconstrained minimization of $\beta$-smooth functions and $\eta_t = \eta =  \sqrt{\frac{M}{ \beta \sigma^2 T}}$,  SGD Algorithm \ref{alg:BasicSGD} converges as
+对于 $\beta$-光滑函数的无约束最小化问题，若$\eta_t = \eta =  \sqrt{\frac{M}{ \beta \sigma^2 T}}$， SGD算法\ref{alg:BasicSGD}收敛为
+$$ \E \left[  \frac{1}{T} \sum_t \| \nabla_t  \|^2 \right]  \leq  2 \sqrt{\frac{M \beta \sigma^2 }{T} }.$$
+\end{theorem}
+\begin{proof}
+%Denote by $\nabla_t$ the shorthand for  $\nabla f(\x_t)$, and $h_t = f(\x_t) - f(\x^*)$. The stochastic descent lemma is given in the following  equation, 
+用 $\nabla_t$表示 $\nabla f(\x_t)$，且 $h_t = f(\x_t) - f(\x^*)$。随机下降引理如下式所示：
+\begin{align*}
+\E[ h_{t+1} - h_t ] & =  \E [ f(\x_{t+1})  - f(\x_t) ] \\
+& \le  \E[  \nabla_t^\top (\x_{t+1} - \x_t) + \frac{\beta}{2} \|\x_{t+1} - \x_t\|^2 ]  & \text{ $\beta$-smoothness} \\
+& =  - \E[  \eta \nabla _t^\top  \tilde{\nabla}_t]  + \frac{\beta}{2} \eta^2\E   \|\tilde{\nabla}_t\|^2 & \text{ algorithm defn.} \\
+& =  - \eta \|{\nabla}_t \|^2  + \frac{\beta}{2} \eta^2 \sigma^2  & \text{ variance bound.} 
+\end{align*}
+%Thus, summing up over $T$ iterations, we have for $\eta = \sqrt{\frac{M}{ \beta \sigma^2 T}}$, 
+因此，对 $T$次迭代求和，我们有 $\eta = \sqrt{\frac{M}{ \beta \sigma^2 T}}$，
+\begin{eqnarray*}
+\E \left[ \frac{1}{T} \sum_{t=1}^T \|\nabla_t \|^2 \right] & \leq \frac{1}{T \eta} \sum_t \E \left[ h_t - h_{t+1} \right] + \eta   \frac{\beta}{2}  \sigma^2  \leq  \frac{M}{T \eta}  + \eta   \frac{\beta}{2}  \sigma^2 \\
+& = \sqrt{\frac{M \beta \sigma^2}{T}} + \frac{1}{2}  \sqrt{ \frac{M  \beta \sigma^2}{T}}  \leq 2 \sqrt{\frac{M \beta \sigma^2 }{ T}}  .
+\end{eqnarray*}
+\end{proof}
+
+
+
+%We thus conclude that $O(\frac{1}{\eps^4})$ iterations are needed to find a point with $\|\nabla f(\x)\| \leq \eps$, as opposed to $O(\frac{1}{\eps^2})$. However, each iteration takes $O(|E|)$ time, instead of $O(|E| m)$ time for gradient descent. 
+
+%This is why SGD is one of the most useful algorithms in machine learning. 
+
+因此，我们得出结论，需要$O(\frac{1}{\eps^4})$ 迭代才能找到具有 $\|\nabla f(\x)\| \leq \eps$的点，而不是 $O(\frac{1}{\eps^2})$。然而，每次迭代需要 $O(|E|)$ 时间，而不是梯度下降所需要的 $O(|E| m)$时间。
+
+这就是为什么SGD是机器学习中最有用的算法之一。
+
+
+
+
+\newpage
+\section{Bibliographic remarks}
+
+%For in depth treatment of backpropagation and the role of deep neural networks in machine learning the reader is referred to \cite{Goodfellow-et-al-2016}.
+
+%For detailed rigorous convergence proofs of first order methods, see lecture notes by Nesterov \cite{NesterovBook} and Nemirovskii \cite{NY83,Nemirovski04lectures}, as well as the recent text \cite{bubeckOPT}.
+
+关于反向传播的深入处理和深度神经网络在机器学习中的作用，读者可参考\cite{Goodfellow-et-al-2016}。
+
+有关一阶方法的详细严格收敛证明，请参见Nesterov \cite{NesterovBook} 和Nemirovskii \cite{NY83,Nemirovski04lectures}的课堂讲稿，以及最近的文字\cite{bubeckOPT}。
+
+
+
+
+
+
+
+
+
+
+
