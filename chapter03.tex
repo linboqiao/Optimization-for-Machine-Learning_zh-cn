@@ -29,8 +29,11 @@
 使用生物学类比，激活函数 $\sigma$ 它通过将结果映射到所需范围（通常为 $[0,1]$或 $[-1,1]$）来确定神经元（即节点）“激发”给定输入的强度。一些被广泛使用的例子包括：
 \begin{itemize}
 \item Sigmoid: $\sigma(x) = \frac{1}{1 + e^{-x}}$
-\item Hyperbolic tangent: $\tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}$
-\item Rectified linear unit: $ReLU(x) = \max\{0, x\}$ (currently the most widely used of the three) 
+\item Hyperbolic tangent: $\tanh(x) = \displaystyle\frac{e^x - e^{-x}}{e^x + e^{-x}}$
+\item Rectified linear unit: $ReLU(x) = \max\{0, x\}$ (
+%currently the most widely used of the three
+当前是这三个中使用最多的
+) 
 \end{itemize}
 
 %The inputs to the input layer nodes is a given data point, while the inputs to to all other nodes are the output of the nodes connected to it. We denote by $\rho(v)$ the set of input neighbors to node $v$. The top node output is the input to the loss function, which takes its ``prediction" and the true label to form a loss. 
@@ -51,7 +54,10 @@ $$f(W) =  \E_{\x_i,y_i} \left[ \ell( v^{1} (W,\x_i) , y_i)  \right]  $$
 
 %For most commonly-used activation and loss functions, the above function is non-convex. However, it admits important computational properties. The most significant property is given in the following lemma.
 对于最常用的激活和损失函数，上述函数是非凸函数。然而，它拥有重要的计算性质。下面的引理给出了最重要的性质。
-\begin{lemma}[Backpropagation lemma]
+\begin{lemma}[
+%Backpropagation lemma
+反向传播引理
+]
 %The gradient of $f$ can be computed in time $O(|E|)$. 
 $f$ 的梯度可以在 时间 $O(|E|)$ 内计算得到。
 \end{lemma}
@@ -96,12 +102,13 @@ $$ \frac{\partial }{\partial W_{uv} } f (W) =   \E_{\x_i,y_i} \left[ \frac{\part
     }
 \label{alg:BasicGD}
 \begin{algorithmic}[1]
-\STATE Input: $f$, $T$, initial point $\x_1 \in \K$, sequence of step sizes $\{\eta_t\}$
+\STATE %Input: $f$, $T$, initial point $\x_1 \in \K$, sequence of step sizes $\{\eta_t\}$
+输入: $f$, $T$, 初始点 $\x_1 \in \K$, 步长序列 $\{\eta_t\}$
 \FOR {$t=1$ to $T$}
 \STATE Let $ \y_{t+1} = \x_{t}-\eta_t {\nabla f}(\x_t) , \  \x_{t+1}= \proj_{\K} \left( \y_{t+1}  \right) $
 %\STATE Let  $x_{t+1}= \min_{x\in\mathcal{K}} |x-y_{t+1}|$
 \ENDFOR
-\RETURN ${\x}_{T+1} $ 
+\STATE 输出： ${\x}_{T+1} $ 
 \end{algorithmic}
 \end{algorithm}
 
@@ -113,14 +120,23 @@ $$ \frac{\partial }{\partial W_{uv} } f (W) =   \E_{\x_i,y_i} \left[ \frac{\part
 对于$\beta$-光滑函数和 $\eta_t=\frac{1}{\beta}$的无约束极小化，GD算法\ref{alg:BasicGD}收敛为
 $$ \frac{1}{T} \sum_t \| \nabla_t  \|^2 \leq  \frac{4 M \beta}{T} .$$
 \end{theorem}
-\begin{proof}
+\begin{proof}[证明]
 %Denote by $\nabla_t$ the shorthand for  $\nabla f(\x_t)$, and $h_t = f(\x_t) - f(\x^*)$. The {\bf Descent Lemma} is given in the following simple equation, 
 用 $\nabla_t$表示 $\nabla f(\x_t)$ 和  $h_t = f(\x_t) - f(\x^*)$。{\bf 下降引理}在下面的简单方程中给出，
 \begin{align*}
 h_{t+1} - h_t & =  f(\x_{t+1})  - f(\x_t) \\
-& \le   \nabla_t^\top (\x_{t+1} - \x_t) + \frac{\beta}{2} \|\x_{t+1} - \x_t\|^2 & \text{ $\beta$-smoothness} \\
-& =  - \eta_t \|\nabla_t \|^2 + \frac{\beta}{2} \eta_t^2  \|\nabla_t\|^2 & \text{ algorithm defn.} \\
-& =  - \frac{1}{2\beta} \|\nabla_t \|^2  & \text{ choice of $\eta_t=\frac{1}{\beta}$} 
+& \le   \nabla_t^\top (\x_{t+1} - \x_t) + \frac{\beta}{2} \|\x_{t+1} - \x_t\|^2 & \text{ 
+%$\beta$-smoothness
+$\beta$-光滑
+} \\
+& =  - \eta_t \|\nabla_t \|^2 + \frac{\beta}{2} \eta_t^2  \|\nabla_t\|^2 & \text{ 
+%algorithm defn.
+算法定义
+} \\
+& =  - \frac{1}{2\beta} \|\nabla_t \|^2  & \text{ 
+%choice of $\eta_t=\frac{1}{\beta}$
+选取$\eta_t=\frac{1}{\beta}$
+} 
 \end{align*}
 %Thus, summing up over $T$ iterations, we have 
 因此，将 $T$ 次迭代求和，我们有
@@ -137,10 +153,10 @@ h_{t+1} - h_t & =  f(\x_{t+1})  - f(\x_t) \\
 一个凸函数满足
 $$ h_t \leq D \| \nabla_t \|  ,   $$
 %and an $\alpha$-strongly convex function satisfies
-，一个 $\alpha$-强凸的函数满足
+且一个 $\alpha$-强凸的函数满足
 $$ h_t \leq  \frac{1}{2 \alpha} \|\nabla_t\|^2 .   $$
 \end{lemma}
-\begin{proof}
+\begin{proof}[证明]
 %The gradient upper bound for convex functions gives
 凸函数的梯度上界为
 $$ h_t \leq \nabla_t ( \x^* - \x_t) \leq D  \| \nabla_t \|  $$
@@ -183,12 +199,13 @@ $\nabla \textit{f}(W) = \nabla \E\limits_{\x_i, y_i} [\ell(v^1(W, \x_i), y_i)] =
     }
 \label{alg:BasicSGD}
 \begin{algorithmic}[1]
-\STATE Input: $f$, $T$, initial point $\x_1 \in \K$, sequence of step sizes $\{\eta_t\}$
+\STATE %Input: $f$, $T$, initial point $\x_1 \in \K$, sequence of step sizes $\{\eta_t\}$
+输入: $f$, $T$, 初始点 $\x_1 \in \K$, 步长序列 $\{\eta_t\}$
 \FOR {$t=1$ to $T$}
 \STATE Let $ \y_{t+1} = \x_{t}-\eta_t {\nabla f}(\x_t) , \  \x_{t+1}= \proj_{\K} \left( \y_{t+1}  \right) $
 %\STATE Let  $x_{t+1}= \min_{x\in\mathcal{K}} |x-y_{t+1}|$
 \ENDFOR
-\RETURN ${\x}_{T+1} $ 
+\STATE 输出：${\x}_{T+1} $ 
 \end{algorithmic}
 \end{algorithm}
 
@@ -199,14 +216,23 @@ $\nabla \textit{f}(W) = \nabla \E\limits_{\x_i, y_i} [\ell(v^1(W, \x_i), y_i)] =
 对于 $\beta$-光滑函数的无约束最小化问题，若$\eta_t = \eta =  \sqrt{\frac{M}{ \beta \sigma^2 T}}$， SGD算法\ref{alg:BasicSGD}收敛为
 $$ \E \left[  \frac{1}{T} \sum_t \| \nabla_t  \|^2 \right]  \leq  2 \sqrt{\frac{M \beta \sigma^2 }{T} }.$$
 \end{theorem}
-\begin{proof}
+\begin{proof}[证明]
 %Denote by $\nabla_t$ the shorthand for  $\nabla f(\x_t)$, and $h_t = f(\x_t) - f(\x^*)$. The stochastic descent lemma is given in the following  equation, 
 用 $\nabla_t$表示 $\nabla f(\x_t)$，且 $h_t = f(\x_t) - f(\x^*)$。随机下降引理如下式所示：
 \begin{align*}
 \E[ h_{t+1} - h_t ] & =  \E [ f(\x_{t+1})  - f(\x_t) ] \\
-& \le  \E[  \nabla_t^\top (\x_{t+1} - \x_t) + \frac{\beta}{2} \|\x_{t+1} - \x_t\|^2 ]  & \text{ $\beta$-smoothness} \\
-& =  - \E[  \eta \nabla _t^\top  \tilde{\nabla}_t]  + \frac{\beta}{2} \eta^2\E   \|\tilde{\nabla}_t\|^2 & \text{ algorithm defn.} \\
-& =  - \eta \|{\nabla}_t \|^2  + \frac{\beta}{2} \eta^2 \sigma^2  & \text{ variance bound.} 
+& \le  \E[  \nabla_t^\top (\x_{t+1} - \x_t) + \frac{\beta}{2} \|\x_{t+1} - \x_t\|^2 ]  & \text{
+%$\beta$-smoothness
+$\beta$-光滑
+} \\
+& =  - \E[  \eta \nabla _t^\top  \tilde{\nabla}_t]  + \frac{\beta}{2} \eta^2\E   \|\tilde{\nabla}_t\|^2 & \text{
+%algorithm defn.
+算法定义
+} \\
+& =  - \eta \|{\nabla}_t \|^2  + \frac{\beta}{2} \eta^2 \sigma^2  & \text{ 
+%variance bound.
+方差上界
+} 
 \end{align*}
 %Thus, summing up over $T$ iterations, we have for $\eta = \sqrt{\frac{M}{ \beta \sigma^2 T}}$, 
 因此，对 $T$次迭代求和，我们有 $\eta = \sqrt{\frac{M}{ \beta \sigma^2 T}}$，
@@ -230,7 +256,10 @@ $$ \E \left[  \frac{1}{T} \sum_t \| \nabla_t  \|^2 \right]  \leq  2 \sqrt{\frac{
 
 
 \newpage
-\section{Bibliographic remarks}
+\section{
+%Bibliographic remarks
+书目注释
+}
 
 %For in depth treatment of backpropagation and the role of deep neural networks in machine learning the reader is referred to \cite{Goodfellow-et-al-2016}.
 
