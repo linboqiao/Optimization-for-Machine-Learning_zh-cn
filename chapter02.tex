@@ -7,7 +7,9 @@
     %Basic concepts in optimization and analysis
     优化分析中的基本概念
     }  \label{chap:opt}
-\chaptermark{Basic concepts}
+\chaptermark{
+%Basic concepts
+基本概念}
 
 \section{
     %Basic definitions and the notion of convexity
@@ -239,7 +241,7 @@ $$  \| \nabla f(\x^\star ) \| \leq \epsilon  \ , \   \nabla^2 f(\x^\star) \succe
 \end{enumerate}
 \end{lemma}
 
-\begin{proof}
+\begin{proof}[证明]
 
 \begin{enumerate}
 \item  $h_t \geq \frac{\alpha}{2} d_t^2 $: %% case 1
@@ -253,7 +255,7 @@ h_t & =  f(\x_t) - f(\x^{\star}) \\
  & = \frac{\alpha}{2} \|\x_t - \x^{\star}\|^2 
 \end{array}
 \end{equation*}
-where the last inequality follows since the gradient at the global optimum is zero. 
+%where the last inequality follows since the gradient at the global optimum is zero. 
 其中，最后一个不等式成立是因为全局最优解处的梯度是 0。
     
     \item  $h_t \leq \frac{\beta}{2} d_t^2 $:  %% case 2
@@ -331,12 +333,14 @@ $\x = \x_t \ , \ \y = \x^\star$,
     }
 \label{alg:basic}
 \begin{algorithmic}[1]
-\STATE Input: time horizon $T$, $x_0$
+\STATE 输入: 时间范围$T$，$x_0$ %Input: time horizon $T$, $x_0$
 \FOR{$t = 0, \ldots, T-1$}
 \STATE Set $\eta_t =  \frac{h_t}{\|\nabla_t\|^2} $
 \STATE  $ \x_{t+1}  =   \x_t - \eta_t \nabla_t $
 \ENDFOR
-\STATE Return $\xbar = \argmin_{\x_t} \{ f(\x_t) \}$
+\STATE %Return 
+输出
+$\xbar = \argmin_{\x_t} \{ f(\x_t) \}$
 \end{algorithmic}
 \end{algorithm}
 
@@ -395,7 +399,7 @@ h(\xbar)  \leq   R_{T,\gamma}\, .
 
 
 
-\begin{proof}
+\begin{proof}[证明]
 %The proof analyzes different cases:
 本证明分析不同不同的情况：
 \begin{enumerate}
@@ -477,7 +481,8 @@ $a_0\leq 1$ 可以由  Lemma \ref{lem:elementary_properties} 得到. 对于 $t=1
  - \frac{\gamma h_t}{2 \beta} \leq
   - \gamma \frac{\alpha}{4\beta} d_t^2
   \]
-  Thus,
+  %Thus,
+  因此，
   \[
     h_{T} \leq \beta d_{T}^2 \leq \beta d_0^2
     \left(1-\gamma\frac{\alpha}{4 \beta}\right)^T\, .
@@ -573,7 +578,10 @@ $$\Delta_n = \lbrace{\x\in\mathbb{R}^n \, | \, \sum_{i=1}^n \x_i = 1, \, \x_i \g
 
 
 \newpage
-\section{Bibliographic remarks}
+\section{
+%Bibliographic remarks
+书目注释
+}
 
 %The reader is referred to dedicated books on convex optimization for much more in-depth treatment of the topics surveyed in this background chapter.  For background in convex analysis see the texts  \cite{borwein2006convex,rockafellar1997convex}. The classic textbook \cite{boyd.convex} gives a broad introduction to convex optimization with numerous applications. 
 %For an adaptive analysis of gradient descent with the Polyak stepsize see \cite{hazan2019revisiting}.
