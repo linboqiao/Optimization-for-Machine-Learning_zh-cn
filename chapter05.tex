@@ -1,0 +1,749 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Regularization 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{
+    %Regularization
+    正则化
+    } \label{chap:regularization}
+
+%In this chapter we consider a generalization of the gradient descent called by different names in different communities (such as mirrored-descent, or regularized-follow-the-leader).  The common theme of this generalization is called {\it Regularization}, a concept that is founded in generalization theory. Since this course focuses on optimization rather than generalization, we shall refer the reader to the generalization aspect of regularization, and focus hereby on optimization algorithms.
+在这一章中，我们考虑了梯度下降的一个泛化，在不同的社区中被称为不同的名字（例如镜像下降，或正则化跟随领导）。这种泛化的共同主题被称为{\it 正则化}，这是一个建立在泛化理论中的概念。由于本课程的重点是优化而非泛化，因此我们将向读者介绍正则化的泛化方面，并在此重点介绍优化算法。
+
+%We start by motivating this general family of methods using the fundamental problem of decision theory. 
+我们首先利用决策理论的基本问题来激发这一系列方法的出发点。
+
+\section{
+    %Motivation:  prediction from expert advice
+    出发点：来自专家建议的预测
+    } \label{sec:experts}
+
+%Consider the following fundamental iterative decision making problem:
+考虑以下基本的迭代决策问题：
+
+%At each time step $t=1,2,\ldots,T$, the decision maker faces a choice between two actions  $A$ or $B$ (i.e.,  buy or sell a certain stock). The decision maker has assistance in the form of  $N$  ``experts'' that offer their advice. After a choice between the two actions has been made, the decision maker receives feedback in the form of a loss associated with each decision.  For simplicity one of the actions receives a loss of zero (i.e., the ``correct'' decision) and the other a loss of one. 
+在每一时刻  $t=1,2,\ldots,T$ ，决策者面临着两种行动的选择 $A$ 或 $B$ （如，购买或出售特定股票）。决策者根据 $N$ “专家” 提供建议获得帮助。在两个行动之间做出选择后，决策者会收到与每个决策相关损失的反馈。为简单起见，其中一个操作的损失为 0 （即“正确”的决策），另一个操作的损失为 1。
+
+%We make the following elementary observations:
+我们进行以下初步观察：
+\begin{enumerate} 
+\paragraph{
+    %Simple observations:
+    简单的观测：
+    }
+\item
+%A decision maker that chooses an  action uniformly at random each iteration,  trivially attains a loss of $\frac{T}{2} $ and is ``correct''  $50\%$ of the time.
+一个决策者在每次迭代中均匀地随机选择一个动作，很容易损失 $\frac{T}{2}$，并且在时间上是“正确的” $50\%$。
+\item
+%In terms of the number of mistakes, no algorithm can do better in the worst case! In a later  exercise, we will  devise  a randomized setting in which the expected number of mistakes of any algorithm is at least $\frac{T}{2}$. 
+就错误的数量而言，在最坏的情况下，没有算法能做得更好！在后面的练习中，我们将设计一个随机设置，其中任何算法的预期错误数至少为 $\frac{T}{2}$。
+\end{enumerate}
+
+%We are thus motivated to consider a {\it relative performance metric}: can the decision maker make as few mistakes as the best expert in hindsight? 
+%The next theorem shows that the answer in the worst case  is negative for a deterministic decision maker.
+因此，这些提示我们要考虑一个{\it 相对性能评价指标}：在事后看来，决策者能像最好的专家那样少犯错误吗？
+下一个定理表明，对于确定性决策者，最坏情况下的答案是否定的。
+\begin{theorem}
+%Let $L \leq \frac{T} {2} $ denote the number of mistakes made by the best expert in hindsight. Then there does not exist a deterministic algorithm that can guarantee less than $2L$ mistakes.
+令  $L \leq \frac{T} {2} $ 表示事后最好的专家犯下的错误的数量。
+则，不存在一种确定性算法，可以保证错误少于 $2L$ 。
+\end{theorem}
+
+\begin{proof}[证明]
+
+%Assume that there are only two experts and one always chooses option $A$ while the other always chooses option $B$.
+%Consider the setting in which an adversary always chooses the opposite of our prediction (she can do so, since our algorithm is deterministic).
+%Then, the total number of mistakes the algorithm makes is $T$.
+%However, the best expert makes no more than $\frac{T}{2}$ mistakes (at every iteration exactly one of the two experts is mistaken).
+%Therefore, there is no algorithm that can always guarantee less than $2L$ mistakes.
+假设只有两位专家，其中一位总是选择选项$A$，而另一位总是选择选项$B$。
+考虑有一位对手总是选择与我们预测相反的环境（她可以这样做，因为我们的算法是确定性的）。
+然后，该算法犯的错误总数是$T$。
+然而，最好的专家犯的错误不超过$\frac{T}{2}$（在每次迭代中，两位专家中正好有一位出错）。
+因此，没有一种算法可以保证错误少于 $2L$。
+\end{proof}
+
+%This observation motivates the design of random decision making algorithms, and indeed, the OCO framework  gracefully models decisions on a continuous probability space. Henceforth we prove Lemmas \ref{lem:wm} and \ref{lem:rwm} that show the following: 
+这一观察结果推动了随机决策算法的设计，实际上，OCO框架是在连续概率空间上优雅地建模决策。后面，我们证明引理\ref{lem:wm} 和 \ref{lem:rwm} ，它们表明：
+\begin{theorem}
+%Let $\eps \in (0,\frac{1}{2} )$. Suppose the best expert makes $L$  mistakes. Then:
+令 $\eps \in (0,\frac{1}{2} )$，假设最好的专家犯了 $L$ 个错误。然后：
+\begin{enumerate}
+\item
+%There is an efficient deterministic algorithm that can guarantee less than $2(1+\epsilon)L + \frac{2\log N}{\epsilon}$  mistakes;
+有一种有效的确定性算法，可以保证产生少于 $2(1+\epsilon)L + \frac{2\log N}{\epsilon}$ 的错误；
+\item
+%There is an efficient randomized algorithm for which the expected number of mistakes is at most $(1+\epsilon)L  + \frac{\log N}{\epsilon}$.
+有一种有效的随机算法，其预期错误数最多为 $(1+\epsilon)L  + \frac{\log N}{\epsilon}$。
+\end{enumerate}
+\end{theorem}
+
+
+\subsection {
+	%The weighted majority algorithm
+	加权多数算法
+	}
+
+%The weighted majority (WM) algorithm is intuitive to describe: 
+%each expert $i$ is assigned a weight $W_t(i)$ at every  iteration $t$.
+%Initially, we set $W_1(i) = 1$ for all experts $i \in [N]$.
+%For all $t \in [T]$ let $S_t(A),S_t(B) \subseteq [N] $ be the set of experts that choose $A$ (and respectively $B$) at time $t$.  Define,
+加权多数（WM）算法可以直观地描述为：
+每个专家 $i$ 在每次迭代 $t$ 时被分配一个权重 $W_t(i)$。
+最初，我们为所有专家 $i \in [N]$ 设置了 $W_1(i) = 1$ 。
+对于所有 $t \in [T]$ ，令 $S_t(A),S_t(B) \subseteq [N] $ 是在时间 $t$ 选择 $A$（ 相应选择 $B$）的专家集合。定义
+\[
+W_t(A) = \smashoperator[r]{\sum_{i \in S_t(A)}} W_t(i) \qquad  \qquad W_t(B) = \smashoperator[r]{\sum_{i \in S_t(B)}} W_t(i) 
+\]
+%and predict according to
+然后，根据如下公式预测
+\begin{equation*}
+a_t =
+\begin{cases}
+A & \text{
+	%if 
+	如果
+	$W_t(A) \ge W_t(B)$}\\
+B & \text{
+	%otherwise.
+	其他情况
+	}
+\end{cases}
+\end{equation*}
+%Next,  update the weights $W_t(i)$ as follows:
+然后，按照如下公式 更新权值  $W_t(i)$：
+\begin{equation*}
+W_{t+1}(i) =
+\begin{cases}
+W_t(i) & \text{
+	%if expert $i$ was correct
+	如果 专家 $i$ 是正确的
+	}\\
+W_t(i)  (1-\eps) & \text{
+	%if expert $i$ was wrong
+	如果专家 $i$ 是错误的
+	}
+\end{cases}
+,
+\end{equation*}
+%where $\eps$ is a parameter of the algorithm that will affect its performance. This concludes the description of the WM algorithm. We proceed to bound the number of  mistakes it makes. 
+其中，$\eps$是算法的一个参数，将影响其性能。这就结束了对WM算法的描述。我们继续限制它犯错误的数量。
+\begin{lemma} \label{lem:wm}
+%Denote by $M_t$ the number of mistakes the algorithm makes until time $t$, and by $M_t(i)$ the number of mistakes made by expert $i$ until time $t$.
+%Then, for any expert $i \in [N]$ we have
+用 $M_t$ 表示算法在时刻 $t$ 之前犯的错误数，用 $M_t(i)$ 表示专家 $i$ 在时刻 $t$ 之前犯的错误数。
+那么，对于任何专家 $i \in [N]$ 我们有
+\[
+M_T \le 2(1+\epsilon)M_T(i) + \frac{2\log N}{\epsilon} .
+\]
+\end{lemma}
+
+%\noindent We can optimize $\epsilon$ to minimize the above bound.
+%The expression on the right hand side is of the form $f(x)=ax+b/x$, that reaches its minimum at $x=\sqrt{b/a}$.
+%Therefore the bound is minimized at $\epsilon^\star = \sqrt{\log N/M_T(i)}$.
+%Using this optimal value of $\epsilon$, we get that for the best expert $i^\star$ 
+\noindent 我们可以优化 $\epsilon$ 以最小化上述界限。
+右边的表达式的形式为 $f(x)=ax+b/x$，其最小值为 $x=\sqrt{b/a}$。
+因此，界限在  $\epsilon^\star = \sqrt{\log N/M_T(i)}$ 处取最小。
+使用 $\epsilon$ 这个最佳值，我们得到了最佳专家 $i^\star$
+\[
+M_T \le 2M_T(i^\star) + O\left(\sqrt {M_T(i^\star)\log N}\right).
+\]
+%Of course, this value of  $\epsilon^\star$ cannot be used in advance since we do not know which expert is the best one ahead of time (and therefore we do not know the value of $M_T(i^\star)$). However, we shall see later on that the same asymptotic bound can be obtained even without this prior knowledge. 
+当然，$\epsilon^\star$ 的值不能在确定前得到，因为我们不知道哪位专家是最好的专家（因此我们不知道 $M_T(i^\star)$ 的值）。然而，我们稍后将看到，即使没有这种先验知识，也可以得到相同的渐近界。
+
+%Let us now prove Lemma \ref{lem:wm}.
+让我们证明 Lemma\ref{lem:wm}。
+
+\begin{proof}[证明]
+
+%Let $\Phi_t= \sum_{i=1}^N W_t(i)$ for all $t \in [T]$, and note that $\Phi_1=N$.
+对于所有 $t \in [T]$， 令 $\Phi_t= \sum_{i=1}^N W_t(i)$ , 并记 $\Phi_1=N$.
+
+%Notice that $\Phi_{t+1} \le \Phi_t$. However, on iterations in which the WM algorithm erred, we have 
+注意到 $\Phi_{t+1} \le \Phi_t$。然而，在WM算法出错的迭代中，我们有:
+$$\Phi_{t+1} \le \Phi_t(1-\frac{\epsilon}{2}) ,$$
+%the reason being that experts with at least half of total weight were wrong (else WM would not have erred), and therefore
+原因是，至少有一半体重的专家是错误的（否则WM不会出错），因此
+\[
+\Phi_{t+1} \le  \frac{1}{2} \Phi_t(1-\epsilon) + \frac {1} {2} \Phi_t =\Phi_t(1-\frac {\epsilon}{2}) .
+\]
+%From both observations,
+从两个观察结果来看，
+\[
+\Phi_{t} \le \Phi_1 (1-\frac{\epsilon}{2})^{M_t} = N (1-\frac{\epsilon}{2})^{M_t} .
+\]
+%On the other hand, by definition we have for any expert $i$ that
+另一方面，从定义上来说，我们对任何专家 $i$ 来说都是如此
+\[
+W_T(i) = (1-\epsilon)^{M_T(i)} .
+\]
+%Since the value of $W_T(i)$ is always less than the sum of all weights $\Phi_T$, we conclude that
+由于 $W_T(i)$ 的值总是小于所有权重的总和 $\Phi_T$，可得出结论：
+\[
+(1-\epsilon)^{M_T(i)} = W_T(i) \le \Phi_T \le N(1-\frac{\epsilon}{2})^{M_T}.
+\]
+%Taking the logarithm of both sides we get
+取两边的对数，我们得到
+\[
+M_T(i)\log(1-\epsilon) \le \log{N} + M_T\log{(1-\frac{\epsilon}{2})}  .
+\]
+%Next, we use the approximations
+接下来，我们使用近似：
+\[
+-x-x^2 \le \log{(1-x)} \le -x  \qquad  \quad 0 < x < \frac{1}{2},
+\]
+%which follow from the Taylor series of the logarithm function, to obtain that
+从对数函数的泰勒级数得到
+\[
+-M_T(i)(\epsilon+\epsilon^2) \le \log{N} - M_T\frac {\epsilon}{2} ,
+\]
+%and the lemma follows.
+引理得证。
+\end{proof}
+
+\subsection{
+	%Randomized weighted majority
+	随机加权多数算法
+	}
+%In the randomized version of the WM algorithm, denoted RWM, we choose expert $i$ w.p. $p_t(i) = W_t(i) /  \sum_{j=1}^N W_t(j)$ at time $t$.
+在WM算法的随机版本中，表示为RWM，我们在时刻 $t$ 依概率 $p_t(i) = W_t(i) /  \sum_{j=1}^N W_t(j)$ 选择专家 $i$。
+\begin{lemma} \label{lem:rwm}
+%Let $M_t$ denote the number of mistakes made by RWM until iteration $t$. Then, for any expert $i \in [N]$ we have
+让 $M_t$ 表示RWM在迭代 $t$之前犯的错误数。那么，对于任何专家 $i \in [N]$
+\[
+\E[ M_T]  \le (1+\epsilon)M_T(i) + \frac{\log N}{\epsilon} .
+\]
+\end{lemma}
+%\noindent The proof of this lemma is very similar to the previous one, where the factor of two is saved by the use of randomness:
+\noindent 这个引理的证明与前一个引理非常相似，在前一个引理中，通过使用随机性获得了 因子2：
+
+\begin{proof}[证明]
+%As before, let $\Phi_t= \sum_{i=1}^N W_t(i)$ for all $t \in [T]$, and note that $\Phi_1=N$. Let $\tilde{m}_t = M_t - M_{t-1}$ be the indicator variable that equals one if the RWM algorithm makes a mistake on iteration $t$. Let $m_t(i)$  equal one if the $i$'th expert makes a mistake on iteration $t$ and zero otherwise. 
+%Inspecting the sum of the weights: 
+和前面一样，对所有 $t \in [T]$ 令 $\Phi_t= \sum_{i=1}^N W_t(i)$，并记 $\Phi_1=N$。假设 $\tilde{m}_t = M_t - M_{t-1}$ 是一个示性变量，如果RWM算法在迭代 $t$中出错，则该示性变量为 1。如果第 $i$位专家在迭代 $t$中出错，则令 $m_t(i)$等于1，否则为0。
+检查权值总和：
+\begin{align*}
+\Phi_{t+1} & = \sum_i W_t(i) (1 - \eps m_t(i)) \\
+& = \Phi_t (1 - \epsilon  \sum_i p_t(i) m_t(i)) & \mbox{ $p_t(i) = \frac{W_t(i)}{\sum_j W_t(j) }$} \\
+& = \Phi_t ( 1 - \epsilon \E[\tilde{m}_t ]) \\
+& \leq \Phi_t e^{-\eps \E[\tilde{m}_t] }. & \mbox{ $1  + x \leq e^x $}  
+\end{align*}
+%On the other hand, by definition we have for any expert $i$ that
+另一方面，从定义上来说，我们对任意专家 $i$ 有
+\[
+W_T(i) = (1-\epsilon)^{M_T(i)} 
+\]
+%Since the value of $W_T(i)$ is always less than the sum of all weights $\Phi_T$, we conclude that
+由于 $W_T(i)$  的值总是小于所有权值的总和 $\Phi_T$，我们得出结论：
+\[
+(1-\epsilon)^{M_T(i)} = W_T(i) \le \Phi_T \le N e^{-\eps \E [M_T]}.
+\]
+%Taking the logarithm of both sides we get
+取两边的对数，我们得到
+\[
+M_T(i)\log(1-\epsilon) \le \log{N} - \eps \E[ M_T] 
+\]
+%Next, we use the approximation
+接下来，我们使用近似：
+\[
+-x-x^2 \le \log{(1-x)} \le -x \qquad , \quad 0 < x <  \frac{1}{2}
+\]
+%to obtain
+得到
+\[
+-M_T(i)(\epsilon+\epsilon^2) \le \log{N} - \eps \E[M_T] ,
+\]
+%and the lemma follows.
+引理得证。
+\end{proof}
+
+
+
+\subsection{
+	%Hedge
+	对冲
+	}
+
+%The RWM algorithm is in fact more general: instead of considering a discrete number of mistakes, we can consider measuring the performance of an expert by a non-negative real number $\ell_t(i)$, which we refer to as the {\it loss} of the expert $i$ at iteration $t$. The randomized weighted majority algorithm guarantees that a decision maker following its advice will incur an average expected loss approaching that of the best expert in hindsight. 
+RWM算法实际上更一般：我们可以考虑用非负实数 $\ell_t(i)$ 来衡量专家的性能，而不是考虑离散的错误数，我们称之为迭代 $t$ 时专家 $i$的{\it 损失}。随机加权多数算法保证了决策者遵循其建议将导致平均预期损失接近事后最佳专家的预期损失。
+
+%Historically, this was observed by a different and closely related algorithm called Hedge. 
+从历史上看，这是由一种不同且密切相关的算法（称为对冲）观察到的。
+\begin{algorithm}[h!]
+	\caption{
+	%Hedge
+	对冲算法	
+	}
+	\label{alg:Hedge}
+	\begin{algorithmic}[1]
+		%\STATE Initialize: $\forall i\in [N], \ W_1(i) = 1$
+		%\FOR {$t=1$ to $T$}
+		%\STATE Pick $i_t \sim_R W_t$, i.e., $i_t = i$ with probability $\x_t(i) = \frac{W_t(i) } {\sum_j W_t(j) }$
+		%\STATE Incur loss $\ell_t(i_t)$. 
+		%\STATE Update weights $ W_{t+1}(i) = W_{t}(i) e^{-\eps \ell_t(i)}$
+		%\ENDFOR
+		\STATE 初始化: $\forall i\in [N], \ W_1(i) = 1$
+		\FOR {$t=1$ to $T$}
+		\STATE 依概率 $\x_t(i) = \frac{W_t(i) } {\sum_j W_t(j) }$，选取 $i_t \sim_R W_t$, i.e., $i_t = i$ 
+		\STATE 计算损失 $\ell_t(i_t)$. 
+		\STATE 更新权值 $ W_{t+1}(i) = W_{t}(i) e^{-\eps \ell_t(i)}$
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+%Henceforth, denote in vector notation the expected loss of the algorithm by
+现在，用向量表示法表示算法的预期损失
+$$ \E [ \ell_t(i_t) ] = \sum_{i=1}^N \x_t(i) \ell_t(i) = \x_t^\top \ell_t  $$
+\begin{theorem} \label{lem:hedge}
+%Let $\ell_t^2$ denote the $N$-dimensional vector of square losses, i.e., $\ell_t^2(i) = \ell_t(i)^2$,  let $\eps > 0$, and assume all losses to be non-negative.  
+%The Hedge algorithm satisfies for any expert $i^\star \in [N]$:
+设 $\ell_t^2$ 表示平方损失的 $N$维向量，即 $\ell_t^2(i) = \ell_t(i)^2$，$\eps > 0$，并假设所有损失均为非负。
+对任何专家 $i^\star \in [N]$ 冲算法满足：
+\[
+  \sum_{t=1}^T  \x_t^\top \ell_t   \le \sum_{t=1}^T \ell_t(i^\star) + \epsilon \sum_{t=1}^T  \x_t^\top \ell_t^2   + \frac{\log N}{\epsilon} 
+\]
+\end{theorem}
+
+\begin{proof}[证明]
+%As before, let $\Phi_t= \sum_{i=1}^N W_t(i)$ for all $t \in [T]$, and note that $\Phi_1=N$. 
+与之前一样，令 $\Phi_t= \sum_{i=1}^N W_t(i)$ for all $t \in [T]$, 并记 $\Phi_1=N$. 
+	
+%Inspecting the sum of weights: 
+检查权值之和：
+\begin{eqnarray*}
+	\Phi_{t+1} & = \sum_i W_t(i) e^{- \eps \ell_t(i)}  \\
+	& = \Phi_t  \sum_i \x_t(i) e^{- \eps \ell_t(i)}  & \mbox{ $\x_t(i) = \frac{W_t(i)}{\sum_j W_t(j) }$} \\
+	& \leq \Phi_t \sum_i \x_t(i) ( 1 - \epsilon \ell_t(i) + \eps^2 \ell_t(i)^2 ) )  & \mbox{ 
+		for $x \geq 0$, 
+		对于 $x \geq 0$, 
+		}    \\
+	&   & \mbox{  $e^{-x} \leq 1 - x + x^2 $}   \\
+	& = \Phi_t (  1 - \epsilon \x_t^\top \ell_t  + \eps^2 \x_t^\top \ell_t^2   )  \\
+		& \leq \Phi_t e^{-\eps \x_t^\top \ell_t + \epsilon^2 \x_t^\top \ell_t^2  }. & \mbox{ $1  + x \leq e^x $}  
+\end{eqnarray*}
+%On the other hand, by definition, for  expert $i^\star$ we have that
+另一方面，根据定义，对于专家 $i^\star$ 我们有
+	\[
+	W_T(i^\star) = e^{ -\epsilon \sum_{t=1}^T \ell_t(i^\star) } 
+	\]
+%Since the value of $W_T(i^\star)$ is always less than the sum of all weights $\Phi_t$, we conclude that
+由于值 $W_T(i^\star)$ 总是小于所有权值  $\Phi_t$的和，我们得到：
+	\[
+	 W_T(i^\star) \le \Phi_T \le N e^{-\eps \sum_t  \x_t^\top \ell_{t} + \epsilon^2 \sum_{t} \x_t^\top \ell_t^2 }.
+	\]
+	%Taking the logarithm of both sides we get
+	对公式两边取对数，我们有
+	\[
+	-\epsilon \sum_{t=1}^T \ell_t(i^\star)  \le \log{N} - \eps \sum_{t=1}^T  \x_t^\top \ell_t + \epsilon^2 \sum_{t=1}^T \x_t^\top \ell_t^2
+	\]
+	%and the theorem follows by simplifying.
+	化简后即得定理。
+\end{proof}
+
+
+\section{
+	%The Regularization framework
+	正则化框架
+	}
+
+
+%In the previous section we studied the multiplicative weights update method for decision making. A natural question is: couldn't we have used online gradient descent for the same exact purpose? 
+在上一节中，我们研究了决策的乘法权重更新方法。一个自然的问题是：难道我们不能使用在线梯度下降来达到同样的目的吗？
+
+%Indeed, the setting of prediction from expert advice naturally follows into the framework of online convex optimization. To see this, consider the loss functions given by
+事实上，专家建议的预测场景自然遵循在线凸优化的框架。要了解这一点，请考虑以下公式给出的损失函数：
+$$ f_t(\x) = \ell_t^\top \x = \E_{i \sim \x}  [  \ell_t(i) ] ,  $$
+%which capture the expected loss of choosing an expert from distribution $\x \in \Delta_n$ as a linear function. 
+它以线性函数的形式从分布 $\x \in \Delta_n$中获取刻画专家的预期损失。
+
+%The regret guarantees we have studied for OGD imply a regret of 
+我们为OGD研究的遗憾保证意味着
+$$ O(GD \sqrt{T})  = O( \sqrt{nT}) . $$ 
+%Here we have used the fact that the Eucliean diameter of the simplex is two, and that the losses are bounded by one, hence the Euclidean norm of the gradient vector $\ell_t$ is bounded by $\sqrt{n}$. 
+在这里，我们使用了单纯形的欧氏直径为2，损失函数值以1为界的事实，因此梯度向量$\ell_t$的欧氏范数以$\sqrt{n}$为界。
+
+%In contrast, the Hedge algorithm attains regret of $O(\sqrt{T \log n})$ for the same problem. How can we explain this discrepancy?! 
+相比之下，对于同一个问题，对冲算法得到的遗憾是 $O(\sqrt{T \log n})$。我们如何解释这种差异？！
+
+\subsection{
+	%The RFTL algorithm
+	RFTL 算法
+	} 
+
+%Both OGD and Hedge are, in fact, instantiations of a more general meta-algorithm called RFTL (Regularized-Follow-The-Leader). 
+事实上，OGD和Hedge都是一种更通用的元算法RFTL（正则化跟随领导者）的实例。
+
+%In an OCO setting of regret minimization, the most straightforward approach  for the online player is to use at any time the optimal decision (i.e., point in the convex set) in hindsight. Formally, let
+在后悔最小化的OCO设置中，在线玩家最直接的方法是在事后的任何时候使用最佳决策（即凸集中的点）。形式化地说，让我们
+$$\x_{t+1} = \argmin_{\x \in \K} \sum_{\tau=1}^{t} f_\tau(\x).$$
+%This flavor of strategy is known as ``fictitious play'' in economics, and has been named ``Follow the Leader'' (FTL) in machine learning. It is not hard to see that this simple strategy fails miserably in a worst-case sense. That is, this strategy's regret can be linear in the number of iterations, as the following example shows: 
+这种策略在经济学中被称为“虚拟游戏”，在机器学习中被称为“跟随领导者”（FTL）。不难看出，这种简单的策略在最坏的情况下失败得很惨。也就是说，这种策略的遗憾在迭代次数上是线性的，如下例所示：
+%Consider $\K = [-1,1]$, let $f_1(x) = \frac{1}{2} x $, and let $f_\tau$ for $\tau=2 , \ldots , T$ alternate between $- x $ or $x $. Thus, 
+考虑 $\K = [-1,1]$, let $f_1(x) = \frac{1}{2} x $, 对 $\tau=2 , \ldots , T$ 令 $f_\tau$ 在 $- x $ 或 $x $ 之间改变. 因此, 
+$$ \sum_{\tau=1}^t f_\tau(x)  = \mycases{ \frac{1}{2} x } {t \mbox{  
+	%is odd
+	为奇数时
+	} } {-\frac{1}{2} x } {\text{
+		%otherwise
+		其他情况
+		}}  $$
+%The FTL strategy will keep shifting between $x_t = -1$ and $x_t = 1$, always making the wrong choice.
+FTL策略将在 $x_t=-1$ 和 $x_t=1$之间不断变化，总是做出错误的选择。
+
+%The intuitive FTL strategy fails in the example above because it is unstable. Can we modify the FTL strategy such that it won't change decisions often,  thereby causing it to attain low regret? 
+直观的FTL策略在上述示例中失败，因为它不稳定。我们能否修改FTL策略，使其不会经常改变决策，从而使其达到低遗憾？
+
+%This question motivates the need for a general means of stabilizing the FTL method. Such a means is referred to as ``regularization''. 
+这个问题促使我们需要一种稳定FTL方法的通用方法。这种方法被称为“正规化”。
+
+%The generic RFTL meta-algorithm is defined in Algorithm \ref{alg:RFTLmain}. The regularization function ${R}$ is assumed to be strongly convex, smooth, and twice differentiable. 
+通用RFTL元算法在算法\ref{alg:RFTLmain}中定义。正则化函数 ${R}$ 被假定为强凸、光滑和二次可微。
+
+\begin{algorithm}
+	[h] \caption{
+		%Regularized Follow The Leader
+		正则化跟随领导者
+		} \label{alg:RFTLmain} 
+	\begin{algorithmic}[1]
+		%\STATE Input: $\eta > 0$, regularization function ${R}$, and a convex compact set $\K$.
+		\STATE 输入: $\eta > 0$, 正则函数 ${R}$, 以及紧致凸集合 $\K$.
+		\STATE Let $\xv[1]  = \arg\min_{\x \in \K} {\left\{ {R}(\x)\right\} }$.
+		\FOR{$t=1$ to $T$}
+		%\STATE Predict $\xv[t]$.
+		\STATE 预测 $\xv[t]$.
+		%\STATE Observe the payoff function $f_t$ and let $\nabla_t = \nabla f_t(\x_t) $.
+		\STATE 观察回报函数 $f_t$ ，并设 $\nabla_t = \nabla f_t(\x_t) $.
+		5\STATE Update
+		\STATE 更新
+		\begin{align*}
+			\xv[t+1] = \argmin_{\x \in \K} {\left\{\eta\sum_{s=1}^t \nabla_s^\top \x + {R}(\x)\right\}}
+		\end{align*}
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{
+	%Mirrored Descent
+	镜像下降
+	}
+
+%An alternative view of this algorithm is in terms of iterative updates, which can be spelled out using the above definition directly. The resulting algorithm is called "Mirrored Descent".
+该算法的另一种观点是迭代更新，可以使用上述定义直接解释。由此产生的算法称为“镜像下降”。
+
+%OMD is an iterative algorithm that computes the current decision using a simple  gradient update rule and the previous decision, much like OGD. The generality of the method stems from the update being carried out in a ``dual'' space, where the duality notion is defined by the choice of regularization: the gradient of the regularization function defines a mapping from $\reals^n$ onto itself, which is a vector field. The gradient updates are then carried out in this vector field. 
+OMD是一种迭代算法，使用简单的梯度更新规则和前一个决策计算当前决策，与OGD非常相似。该方法的通用性源于在“对偶”空间中执行的更新，其中对偶概念由正则化的选择定义：正则化函数的梯度定义了从$\reals^n$到自身的映射，这是一个向量场。然后在这个向量场中执行梯度更新。
+
+%For the RFTL algorithm the intuition was straightforward---the regularization was used to ensure stability of the decision. For OMD, regularization has an additional purpose: regularization transforms the space in which gradient updates are performed. This transformation enables better bounds in terms of the geometry of the space.
+对于RFTL算法，直觉是直接的---正则化用于确保决策的稳定性。对于OMD，正则化还有一个额外的目的：正则化变换执行梯度更新的空间。这种转换可以在空间的几何结构方面实现更好的边界。
+
+%The OMD algorithm comes in two flavors:  an agile and a lazy version. The lazy version keeps track of a point in Euclidean space and projects onto the convex decision set $\K$ only at decision time. In contrast, the agile version maintains a feasible point at all times, much like OGD. 
+OMD算法有两种版本：敏捷版和懒惰版。懒惰版本跟踪欧几里德空间中的一个点，并仅在决策时投影到凸决策集$\K$。相比之下，敏捷版本始终保持一个可行点，就像OGD一样。
+
+\begin{algorithm}
+	[H] \caption{
+		%Online Mirrored Descent
+		在线镜像下降
+		} \label{alg:flpl}
+	\begin{algorithmic}
+		[1] 
+		%\STATE Input: parameter $\eta > 0$, regularization function ${R}(\x)$.
+		\STATE 输入: 参数 $\eta > 0$, 正则函数 ${R}(\x)$.
+		%\STATE Let $\yv[1]$ be such that $\nabla {R}(\yv[1]) = \bzero$ and 	$\xv[1] = \arg\min_{\x \in \K} B_{R}(\x||\yv[1])$.
+		\STATE 设 $\yv[1]$ 使得 $\nabla {R}(\yv[1]) = \bzero$，且 $\xv[1] = \arg\min_{\x \in \K} B_{R}(\x||\yv[1])$.
+		\FOR{$t=1$ to $T$}
+				%\STATE Play $\xv[t]$.
+				%\STATE Observe the payoff function $f_t$ and let $\nabla_t = \nabla f_t(\x_t) $.
+				\STATE 选取 $\xv[t]$.
+				\STATE 观察回报函数 $f_t$，并令 $\nabla_t = \nabla f_t(\x_t) $.
+		%\STATE Update $\y_t$ according to the rule:
+		\STATE 根据如下规则，更新 $\y_t$:
+		\begin{align*}
+			&\text{[
+				%Lazy version
+				懒惰版本
+				]} 
+			&\nabla {R}(\yv[t+1]) = \nabla {R}(\yv[t]) - \eta\, \nabla_{t}\\
+			&\text{[Agile version]}
+			&\nabla {R}(\yv[t+1]) = \nabla {R}(\xv[t]) - \eta\, \nabla_{t}
+		\end{align*}
+%Project according to $B_{R}$:
+根据 $B_{R}$ 投影:
+		$$\xv[t+1] = \argmin_{\x \in \K} B_{R}(\x||\yv[t+1])$$
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+
+%A myriad of questions arise, but first, let us see how does this algorithm give rise to both OGD.
+出现了无数的问题，但首先，让我们看看这个算法是如何产生OGD的。
+
+
+%We note that there are other important special cases of the RFTL meta-algorithm: those are derived with matrix-norm regularization---namely, the von Neumann entropy function, and the log-determinant function, as well as  self-concordant barrier regularization.  Perhaps most importantly for optimization, also the AdaGrad algorithm is obtained via changing regularization---which we shall explore in detail in the next chapter. 
+我们注意到，RFTL元算法还有其他一些重要的特殊情况：这些情况是通过矩阵范数正则化推导出来的，即冯·诺依曼熵函数、对数行列式函数，以及自协调屏障正则化。也许对优化最重要的是，AdaGrad算法也是通过改变正则化得到的---我们将在下一章详细探讨。
+
+\subsection{
+	%Deriving online gradient descent
+	在线梯度下降的推导
+	}
+
+%To derive the online gradient descent algorithm, we take ${R}(\x) = \frac{1}{2} \|\x - \x_0\|_2^2$ for an arbitrary $\x_0 \in \K$. Projection with respect to  this divergence is the standard Euclidean projection (left as an exercise), and in addition, $\nabla {R}(\x) = \x - \x_0$. Hence, the update rule for the OMD Algorithm \ref{alg:flpl} becomes:
+为了推导在线梯度下降算法，我们取 ${R}(\x) = \frac{1}{2} \|\x - \x_0\|_2^2$ 表示任意 $\x_0 \in \K$。关于这种散度的投影是标准的欧几里德投影（左为练习），此外，$\nabla {R}(\x) = \x - \x_0$。因此，OMD算法\ref{alg:flpl}的更新规则变为：
+\begin{align*}
+	& \xv = \proj_\K (  \yv)  , \ \yv =  \yv[t-1]  - \eta \nabla_{t-1}  & \mbox{
+		%lazy version
+		懒惰版本
+		}  \\
+	& \xv = \proj_\K (  \yv)  , \ \yv =  \xv[t-1]  - \eta \nabla_{t-1}  & \mbox{
+		%agile version
+		敏捷版本
+		} 
+\end{align*}
+
+%The latter algorithm is exactly online gradient descent, as described in Algorithm \ref{figure:ogd} in Chapter \ref{chap:first order}. Furthermore, both variants are identical for the case in which $\K$ is the unit ball. 
+后一种算法完全是在线梯度下降，如第\ref{chap:first order}章中的算法\ref{figure:ogd}所述。此外，对于 $\K$ 是单位球的情况，这两种变体是相同的。
+
+%We later prove general regret bounds that will imply a $O(GD \sqrt{T})$ regret for OGD as a special case of mirrored descent. 
+我们随后证明了一般的遗憾界，这意味着作为镜像下降的特例，OGD的 $O(GD \sqrt{T})$遗憾。
+
+\subsection{
+	%Deriving multiplicative updates
+	推导乘法更新
+	} 
+
+%Let ${R}(\xv[]) =  \xv[] \log \xv[] = \sum_i \x_i \log \x_i$ be the negative entropy function, where $\log \x$ is to be interpreted elementwise. Then $\nabla {R}(\x) = \bone + \log \x$, and hence the update rules for the OMD algorithm become:
+设 ${R}(\xv[]) =  \xv[] \log \xv[] = \sum_i \x_i \log \x_i$ 为负熵函数，其中 $\log \x$ 将按元素解释。然后 $\nabla {R}(\x) = \bone + \log \x$，因此OMD算法的更新规则变为：
+\begin{align*}
+	& \xv = \argmin_{\x \in \K} B_{R}(\x ||\yv)    , \ \log \yv =  \log \yv[t-1]  - \eta \nabla_{t-1}  & \mbox{lazy version}  \\
+	& \xv = \argmin_{\x \in \K} B_{R}(\x ||\yv)    , \ \log \yv =  \log \xv[t-1]  - \eta \nabla_{t-1}  & \mbox{agile version} 
+\end{align*}
+
+%With this choice of regularizer, a notable special case is the experts problem we encountered in \S \ref{sec:experts}, for which the decision set $\K$ is the $n$-dimensional simplex $ \Delta_n = \{ \x \in \reals^n_+ \ | \ \sum_i \x_i =  1  \}$.
+%In this special case, the projection according to the negative entropy becomes scaling by the $\ell_1$ norm (left as an exercise), which implies that both update rules amount to the same algorithm: 
+%$$ \x_{t+1}(i) = \frac{\x_t(i) \cdot e^{-\eta \nabla_t(i)}}{\sum_{j=1}^n \x_t(j) \cdot e^{-\eta \nabla_t(j)} }, $$
+%which is exactly the Hedge algorithm!  The general theorem we shall prove henceforth recovers the $O(\sqrt{T \log n })$ bound for prediction from expert advice for this algorithm.
+对于正则化子的选择，一个值得注意的特例是我们在\S \ref{sec:experts}中遇到的专家问题，对于这个问题，决策集 $\K$是 $n$维单纯形 $ \Delta_n = \{ \x \in \reals^n_+ \ | \ \sum_i \x_i =  1  \}$。
+在这种特殊情况下，根据负熵的投影变成了 $\ell_1$范数的缩放（左为练习），这意味着两个更新规则相当于相同的算法：
+$$ \x_{t+1}(i) = \frac{\x_t(i) \cdot e^{-\eta \nabla_t(i)}}{\sum_{j=1}^n \x_t(j) \cdot e^{-\eta \nabla_t(j)} }, $$
+这正是对冲算法！此后，我们将证明的一般定理从该算法的专家建议中恢复预测的 $O(\sqrt{T \log n })$ 界。
+
+
+
+\section{
+	%Technical background: regularization functions
+	技术背景：正则函数
+	}
+\sectionmark{
+	%Technical background
+	技术背景
+	}
+
+%In the rest of this chapter we analyze the mirrored descent algorithm. For this purpose, consider  regularization functions, denoted $R : \K \mapsto \reals $, which are strongly convex and smooth (recall definitions in \S \ref{sec:optdefs}). 
+在本章的剩余部分，我们将分析镜像下降算法。为此，请考虑正则化函数，表示为 $R : \K \mapsto \reals $，它们是强凸且平滑的（请参阅\S\ref{sec:optdefs}中的定义）。
+
+%Although it is not strictly necessary, we assume that the regularization functions in this chapter are twice differentiable over $\K$  and, for all points $\x \in \text{int}(\K)$ in the interior of the decision set, have a Hessian $\nabla^2 R(\x)$ that is, by the strong convexity of $R$, positive definite.
+虽然这不是严格必要的，但我们假设本章中的正则化函数在$\K$上是二次可微的，并且对于决策集内部的所有点 $\x \in \text{int}(\K)$ ，有一个Hessian $\nabla^2 R(\x)$，也即是说通过 $R$的强凸性，是正定的。
+
+%We denote the diameter of the set $\K$ relative to the function $R$ as 
+我们将集合 $\K$相对于函数 $R$的直径表示为
+$$ D_R = \sqrt{ \max_{\x,\y \in \K} \{ R(\x) - R(\y) \}}$$ 
+
+%Henceforth we make use of general norms and their dual. The dual norm to a norm $\| \cdot \|$ is given by the following definition:
+自此，我们将使用一般规范及其对偶。对偶范数到范数 $\| \cdot \|$的定义如下：
+$$ \| \y \|^* \equaltri \max_{ \| \x \| \leq 1 }  \langle \x, \y \rangle $$
+%A positive definite matrix $A$ gives rise to the matrix norm $\|\x\|_A = \sqrt{\x^\top A \x}$. 
+%The  dual norm of a matrix norm is $\|\x\|_A^*=\|\x\|_{A^{-1}}$. 
+正定矩阵 $A$产生矩阵范数 $\|\x\|_A = \sqrt{\x^\top A \x}$。
+矩阵范数的对偶范数是 $\|\x\|_A^*=\|\x\|_{A^{-1}}$。
+
+%The generalized Cauchy-Schwarz theorem asserts $ \langle \x , \y \rangle \leq \| \x \| \| \y \|^*$ and in particular for matrix norms, $\langle \x , \y \rangle \leq \|\x\|_A \| \y\|_A^*$. 
+广义的Cauchy-Schwarz定理断言 $ \langle \x , \y \rangle \leq \| \x \| \| \y \|^*$，尤其是矩阵范数 $\langle \x , \y \rangle \leq \|\x\|_A \| \y\|_A^*$。
+
+%In our derivations, we usually consider matrix norms with respect to $\nabla^2R(\x)$, the Hessian of the regularization function $R(\x)$.
+%In such cases, we use  the notation 
+在我们的推导中，我们通常考虑关于 $\nabla^2R(\x)$的矩阵范数，正则化函数的Hessian $R(\x)$。
+在这种情况下，我们使用记
+$$\|\x\|_\y \equaltri \|\x\|_{\nabla^2 {R}(\y)}$$
+%and similarly 
+并相似的记
+$$\|\x\|_\y^* \equaltri \|\x\|_{\nabla^{-2} {R}(\y)}$$
+
+
+%A crucial quantity in the analysis with regularization is the remainder term of the Taylor approximation of the regularization function, and especially the remainder term of the first order Taylor approximation. The difference between the value of the regularization function at $\x$ and the value of the first order Taylor approximation is known as the Bregman divergence, given by 
+正则化分析中的一个关键量是正则化函数泰勒近似的余项，尤其是一阶泰勒近似的余项。正则化函数在$\x$处的值与一阶泰勒近似值之间的差值称为Bregman散度，由下式给出：
+\begin{definition}
+	%Denote by $B_{R}(\x||\y)$ the
+	%Bregman divergence with respect to the function ${R}$, defined as
+	用 $B_{R}(\x||\y)$ 表示关于函数 ${R}$ 的布雷格曼散度，定义为
+	$$ B_{R}(\x||\y) = {R}(\x) - {R}(\y) - \nabla {R}(\y)^\top  (\x-\y)   $$
+\end{definition}
+
+%For twice differentiable functions, Taylor expansion and the mean-value theorem assert that the Bregman divergence is equal to the second derivative at an intermediate point, i.e., (see exercises)
+对于二次可微函数，泰勒展开式和中值定理断言布雷格曼散度等于中间点的二阶导数，即（参见练习）
+$$ B_{R}(\x||\y) = \frac{1}{2} \|\x - \y\|_\z^2, $$ 
+%for some point $\z \in [\x,\y]$, meaning there exists some $\alpha \in [0,1]$ such that $\z = \alpha \x + (1-\alpha) \y$. 
+%Therefore, the Bregman divergence defines a local norm, which has a dual norm. We shall denote this dual norm by 
+对于中的某个点 $\z \in [\x,\y]$，意味着存在一些 $\alpha \in [0,1]$，使得 $\z = \alpha \x + (1-\alpha) \y$。
+因此，布雷格曼散度定义了一个局部范数，该局部范数有一个对偶范数。我们对偶范数表示为
+$$ \| \cdot \|_{\x,\y}^*  \equaltri \| \cdot \|_\z^*.$$ 
+%With this notation we have
+根据该表示，我们有
+$$ B_{R}(\x||\y) = \frac{1}{2} \|\x - \y\|_{\x,\y} ^2. $$ 
+%In online convex optimization, we commonly refer to the Bregman divergence between two consecutive decision points $\x_t$ and $\x_{t+1}$. In such cases, we shorthand notation for the norm  defined by the Bregman divergence with respect to  ${R}$ on the intermediate point in $[\x_t,\x_{t+1}]$ as $\| \cdot \|_t \equaltri \| \cdot \|_{\x_t,\x_{t+1}} $. The latter norm is called the local norm at iteration $t$. With this notation, we have $B_{R}(\x_t||\x_{t+1}) = \frac{1}{2} \|\x_t - \x_{t+1}\|_t^2 $. 
+在在线凸优化中，我们通常指的是两个连续决策点 $\x_t$和 $\x_{t+1}$之间的布雷格曼散度。在这种情况下，我们将 $[\x_t,\x_{t+1}]$ 中间点上关于${R}$的布雷格曼散度定义的范数简写为$\| \cdot \|_t \equaltri \| \cdot \|_{\x_t,\x_{t+1}} $。后一个范数在迭代 $t$时称为局部范数。有了这个符号，我们就有了 $B_{R}(\x_t||\x_{t+1}) = \frac{1}{2} \|\x_t - \x_{t+1}\|_t^2 $。
+
+%Finally, we consider below generalized projections that use the Bregman divergence as a distance instead of a norm. Formally, the projection of a point $\y$ according to the Bregman divergence with respect to  function $R$ is given by
+最后，我们考虑以下使用布雷格曼散度作为距离而不是范数的广义投影。形式上，根据布雷格曼散度，点 $\y$相对于函数 $R$的投影如下所示：
+$$\argmin_{\x \in \K} B_{R}(\x||\y)$$
+
+
+
+\section{
+	%Regret bounds for Mirrored Descent
+	镜像下降的遗憾界
+	}
+
+
+%In this subsection we prove regret bounds for the agile version of the RFTL algorithm. The analysis is quite different than the one for the lazy version, and of independent interest.
+在本小节中，我们将证明RFTL算法的敏捷版本的遗憾边界。该分析与懒惰版本的分析大不相同，并且具有独立的关注点。
+
+\begin{theorem}[定理] \label{thm:mirrordescent}
+%The RFTL  Algorithm \ref{alg:flpl} attains for every $\uv \in \K$ the following bound on the regret:
+RFTL算法\ref{alg:flpl}对于每个 $\uv \in \K$ 都会达到以下遗憾界：
+$$  \regret_T \le    2   \eta  \sum_{t=1}^T \| \nabla_t \|_t^{* 2} + \frac{R(\uv) - R(\x_1)}{\eta }  . $$ %B_{R}(\uv||\x_1)
+\end{theorem}
+%If an upper bound on the local norms is known, i.e. $\| \nabla_t\|_t^* \leq G_R$ for all times $t$, then we  can further optimize over the choice of $\eta$ to obtain
+如果已知局部范数的上界，对所有时间$t$ 有 $\| \nabla_t\|_t^* \leq G_R$ ，那么我们可以进一步优化 $\eta$的选择，以获得
+$$ \regret_T \leq  2  D_R G_R \sqrt{ 2T  } .$$
+
+%\begin{theorem}
+%\label{thm:main_primal_dual}
+%Suppose that $\R$ is such that $B_\R(\x,\y) \geq
+%\frac{1}{2} \|\x-\y\|^2$ for some norm $\|\cdot \|$. Let $\|\nabla \fv(\x_t)\|^* \leq
+%G_*$ for all $t$, and $\forall \x \in K \  B_\R(\x,\x_1) \leq D^2$. Applying the primal-dual algorithm (active version) with
+%$\eta = \frac{D}{2 G_* \sqrt{T}} $,  we have
+%\begin{align*}
+%\regret_T \leq DG_* \sqrt{T}
+%\end{align*}
+%\end{theorem}
+\begin{proof}[证明]
+%Since  the functions $\fv$ are convex, for any $\x^* \in K$,
+由于 $\fv$ 函数是凸函数，对于任意 $\x^* \in K$，
+$$ \fv(\x_t) - \fv(\x^*) \leq \nabla \fv(\x_t)^\top (\x_t - \x^*)  .$$
+%The following property of Bregman divergences follows easily from the definition: for any vectors $\x,\y,\z$,
+布雷格曼发散的以下性质很容易从定义中得到：对于任何向量 $\x,\y,\z$，
+$$ (\x - \y)^\top (\nabla \R(\z) - \nabla \R(\y)) = B_\R(\x,\y)-B_\R(\x,\z) +
+B_\R(\y,\z). $$
+%Combining both observations,
+结合上述观测
+\begin{align*}
+2(\fv(\x_t) - \fv(\x^*)) & \leq 2\nabla \fv(\x_t)^\top (\x_t - \x^*)  \\
+& =   \frac{1}{\eta}  (\nabla \R(\y_{t+1}) - \nabla \R(\x_{t}))^\top(\x^* - \x_t) \\
+& =  \frac{1}{\eta} [B_\R(\x^*,\xv)-B_\R(\x^*,\y_{t+1}) + B_\R(\x_t,\y_{t+1})]   \\
+& \leq  \frac{1}{\eta} [B_\R(\x^*,\xv)-B_\R(\x^*,\x_{t+1}) +
+B_\R(\x_t,\y_{t+1})]
+\end{align*}
+%where the last inequality follows from the generalized Pythagorean inequality (see \cite{CesaBianchiLugosi06book} Lemma 11.3),  as $\x_{t+1}$ is the projection w.r.t the Bregman divergence of $\y_{t+1}$ and $\x^* \in K$ is in the convex set. Summing over all iterations,
+其中，最后一个不等式来自广义毕达哥拉斯不等式（参见\cite{CesaBianchiLugosi06book}引理11.3），因为$\x_{t+1}$是投影，$\y_{t+1}$ and $\x^* \in K$ 的布雷格曼散度在凸集中。对所有迭代求和，
+\begin{eqnarray} \label{eq:general1}
+2\regret & \leq & \frac{1}{\eta} [ B_\R(\x^*,\x_1) -  B_\R(\x^*,\x_T) ] + \sum_{t=1}^T \frac{1}{\eta} B_\R(\x_t,\y_{t+1}) \notag \\
+& \leq & \frac{1}{\eta} D^2  + \sum_{t=1}^T \frac{1}{\eta} B_\R(\x_t,\y_{t+1})
+\end{eqnarray}
+
+%We proceed to bound $B_\R(\x_t,\y_{t+1})$. By definition of Bregman divergence, and the generalized Cauchy-Schwartz inequality,
+我们继续定界 $B_\R(\x_t,\y_{t+1})$。根据布雷格曼散度和广义Cauchy-Schwartz不等式的定义，
+\begin{align*}
+ B_\R(\x_t,\y_{t+1}) + B_\R(\y_{t+1},\x_t) &= (\nabla \R(\x_t) - \nabla \R(\y_{t+1}))^\top (\x_t - \y_{t+1}) \\
+ &=  \eta \nabla \fv(\x_t)^\top(\x_t - \y_{t+1}) \\
+ & \leq \eta \| \nabla \fv(\x_t) \|^* \| \x_t - \y_{t+1} \| \\
+ &\leq  \frac{1}{2} \eta^2 G_*^{ 2} + \frac{1}{2} \|\x_t - \y_{t+1}\|^2.
+\end{align*}
+%where in the last inequality follows from $(a-b)^2 \geq 0$. 
+%Thus, by our assumption $B_\R(\x,\y) \geq \frac{1}{2} \|\x-\y\|^2$, we have
+其中，最后一个不等式成立是因为 $(a-b)^2 \geq 0$. 
+因此，根据我们的假设 $B_\R(\x,\y) \geq \frac{1}{2} \|\x-\y\|^2$, 我们有
+$$ B_\R(\x_t,\y_{t+1}) \leq \frac{1}{2} \eta^2 G_*^2 + \frac{1}{2} \|\x_t -
+\y_{t+1}\|^2 - B_\R(\y_{t+1},\x_t) \leq \frac{1}{2} \eta^2 G^2_*. $$
+
+%Plugging back into Equation \eqref{eq:general1}, and by non-negativity of the Bregman divergence, we get
+将其带回方程 \eqref{eq:general1}，通过布雷格曼散度的非负性，我们得到
+$$ \regret \leq  \frac{1}{2} [\frac{1}{\eta} D^2 + \frac{1}{2} \eta T G_{*}^{2} ] \leq  D G_* \sqrt{T} \ ,  $$
+by taking $\eta = \frac{D}{2 \sqrt{T} G_*}$
+
+\end{proof}
+
+
+
+
+
+\newpage
+\section{
+	%Exercises
+	练习
+	}
+
+\begin{enumerate}
+	\item \label{exercise:dualnorm}
+	\begin{enumerate}
+	\item
+	%Show that the dual norm to a matrix norm given by $A \succ 0$ corresponds to the matrix norm of $A^{-1}$.
+	证明由 $A \succ 0$ 给出的矩阵范数的对偶范数对应于 $A^{-1}$ 的矩阵范数。
+	\item
+	%Prove the generalized Cauchy-Schwarz inequality for any norm, i.e., 
+	证明任意范数的广义Cauchy-Schwarz不等式有
+	$$ \langle \x , \y \rangle \leq \|\x \| \|\y \|^*$$ 
+	\end{enumerate}
+
+	
+	\item
+	%Prove that the Bregman divergence is equal to the local norm at an intermediate point, that is:
+	证明布雷格曼散度等于中间点的局部范数，即：
+	$$ B_{R}(\x||\y) = \frac{1}{2} \|\x - \y\|_\z^2, $$ 
+	%where  $\z \in [\x,\y]$ and the interval $[\x,\by]$ is defined as 
+	其中$\z \in [\x,\y]$ 且区间 $[\x,\by]$定义为
+	$$ [\bx,\by] = \{ \vv  = \alpha \bx + (1-\alpha) \by \ , \ \alpha \in [0,1] \}$$
+	
+	\item \label{exercise:bregman-Euclid}
+	%Let ${R}(\x) = \frac{1}{2} \|\x - \x_0\|^2$ be the (shifted) Euclidean regularization function. Prove that the corresponding Bregman divergence is the Euclidean metric. Conclude that projections with respect to  this divergence are standard Euclidean projections.
+	设 ${R}(\x) = \frac{1}{2} \|\x - \x_0\|^2$ 为（移位的）欧几里德正则化函数。证明相应的布雷格曼散度是欧几里德度量。证明：关于这种差异的预测是标准的欧几里德预测。
+	
+	\item \label{exercise:equiv-lazy-agile}
+	 %Prove that both agile and lazy versions of the OMD meta-algorithm are equivalent in the case that the regularization is Euclidean and the decision set is the Euclidean ball. 
+	 证明：当正则化是欧几里德的且决策集是欧几里德球时，OMD元算法的敏捷版本和懒惰版本是等价的。
+	 
+	 \item \label{exercise:bregman-entropy}
+	 %For this problem the decision set is the $n$-dimensional simplex.  Let ${R}(\x) = \x \log \x $ be the negative entropy regularization function. Prove that the corresponding Bregman divergence is the relative entropy, and prove that the diameter $D_R$ of the $n$-dimensional simplex with respect to  this function is bounded by $\log n$. Show that projections with respect to  this divergence over the simplex amounts to scaling by the $\ell_1$ norm. 
+	 对于这个问题，决策集是 $n$维单纯形。设 ${R}(\x) = \x \log \x $为负熵正则化函数。证明相应的布雷格曼散度是相对熵，并证明关于此函数的$n$维单纯形的直径$D_R$有界于$\log n$。表明关于单纯形上这种分歧的预测相当于按$\ell_1$范数进行缩放。
+	 
+	 \item $^*$   
+	 %A  set $\K \subseteq \reals^d$ is symmetric if $\x \in \K$ implies $-\x \in \K$. Symmetric sets gives rise to a natural definition of a norm. % Let $\x_0 = \E_{\x \in \K} [\x] $ be the center of $\K$. 
+	 如果对 $\x \in \K$ 有 $-\x \in \K$，则集合 $\K \subseteq \reals^d$ 是对称的。对称集产生了范数的自然定义
+	 %Define the function $\| \cdot \|_\K : \reals^d \mapsto \reals$ as
+	 定义函数 $\| \cdot \|_\K : \reals^d \mapsto \reals$ 为
+	 $$ \| \x \|_\K = \arg \min_{\alpha > 0 }  \left \{ \frac{1}{\alpha} \x \in \K \right \} $$ 
+	 %Prove that $\| \cdot \|_\K$ is a norm if and only if $\K$ is convex. 
+	 证明： $\| \cdot \|_\K$ 是一个范数，当且仅当 $\K$ 是凸的。
+\end{enumerate}
+
+
+
+
+
+
+
+
+
+\newpage
+\section{
+	%Bibliographic Remarks
+	书目注释
+	}
+
+
+%Regularization in the context of online learning was first studied in \cite{GroveLS01} and \cite{KivinenW01}. The influential paper of Kalai and Vempala \cite{KV-FTL} coined the term ``follow-the-leader'' and introduced many of the techniques that followed in OCO. The latter paper studies random perturbation as a regularization and analyzes the follow-the-perturbed-leader algorithm, following an early development by \cite{Hannan57} that was overlooked in learning for many years.  
+在线学习背景下的正则化最早是在\cite{GroveLS01} 和 \cite{KivinenW01}进行研究的。Kalai和 Vempala \cite{KV-FTL}的一篇有影响力的论文创造了“跟随领导者”一词，并介绍了OCO 遵循的许多技术。后一篇论文将随机扰动作为正则化进行研究，并分析了跟随扰动领导者算法，这是继 \cite{Hannan57}的早期发展之后，多年来在学习中被忽视的一个发展。
+
+
+%In the context of OCO, the term follow-the-regularized-leader was coined in \cite{ShwartzS07,ShalevThesis}, and at roughly the same time an essentially identical algorithm was called ``RFTL'' in \cite{AbernethyHR08}. The equivalence of RFTL and Online Mirrored Descent was observed by  \cite{DBLP:conf/colt/HazanK08}.
+在OCO的上下文中，术语“跟随正则化的领导者”是在\cite{ShwartzS07,ShalevThesis}中创造的，同时在\cite{AbernethyHR08}中，一个基本相同的算法被称为“RFTL”。RFTL和在线镜像下降的等效性由\cite{DBLP:conf/colt/HazanK08}观察到。
