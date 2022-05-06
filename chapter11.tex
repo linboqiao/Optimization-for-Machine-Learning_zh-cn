@@ -1,0 +1,288 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Hyperparameter optimization
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{
+	%Hyperparameter Optimization
+	超参数优化
+	} 
+
+%Thus far in this class, we have been talking about continuous mathematical optimization, where the search space of our optimization problem is continuous and mostly convex.
+%For example, we have learned about how to optimize the weights of a deep neural network, which take continuous real values, via various optimization algorithms (SGD, AdaGrad,  Newton's method, etc.).
+到目前为止，在这门课上，我们一直在讨论连续数学优化，其中我们的优化问题的搜索空间是连续的，并且大部分是凸的。
+例如，我们学习了如何通过各种优化算法（SGD、AdaGrad、牛顿法等）优化深度神经网络的权重，神经网络采用连续的实值作为权重。
+
+%However, in the process of training a neural network, there are some meta parameters, which we call \emph{hyperparameters}, that have a profound effect on the final outcome. These are global, mostly discrete, parameters that are treated differently by algorithm designers as well as by engineers.
+%Examples include the architecture of the neural network (number of layers, width of each layer, type of activation function, ...), the optimization scheme for updating weights (SGD/AdaGrad, initial learning rate, decay rate of learning rate, momentum parameter, ...), and many more.
+%Roughly speaking, these hyperparameters are chosen before the training starts.
+然而，在训练神经网络的过程中，有一些元参数，我们称之为\emph{超参数}，对最终结果有着深远的影响。这些参数是全局的，大多是离散的，算法设计者和工程师对待这些参数的方式不尽相同。
+例子包括神经网络的结构（层数、每层的宽度、激活函数的类型等），更新权重的优化方案（SGD/AdaGrad、初始学习率、学习率衰减率、动量参数等），还有更多。
+粗略地说，这些超参数是在训练开始前选择的。
+
+%The purpose of this chapter is to formalize this problem as an optimization problem in machine learning, which requires a different methodology than we have treated in the rest of this course. We remark that hyperparameter optimization is still an active area of research and its theoretical properties are not well understood as of this time. 
+本章的目的是将这个问题形式化为机器学习中的一个优化问题，这需要一种不同于我们在本课程其余部分中处理的方法。我们注意到，超参数优化仍然是一个活跃的研究领域，到目前为止，它的理论性质还没有得到很好的理解。
+
+\section{
+	%Formalizing the problem
+	问题形式化
+	}
+
+%What makes hyperparameters different from ``regular" parameters? 
+是什么让超参数不同于“常规”参数？
+\begin{enumerate}
+	\setlength{\itemsep}{0pt}
+
+	\item 
+	%The search space is often discrete (for example, number of layers). As such, there is no natural notion of gradient or differentials and it is not clear how to apply the iterative methods we have studied thus far. 
+	搜索空间通常是离散的（例如，层数）。因此，没有梯度或微分的自然概念，也不清楚如何应用我们迄今为止研究的迭代方法。
+
+	\item 
+	%Even evaluating the objective function is extremely expensive (think of evaluating the test error of the trained neural network). Thus it is crucial to minimize the number of function evaluations, whereas other computations are significantly less expensive. 
+	即使是评估目标函数也是极其昂贵的（想想评估经过训练的神经网络的测试误差）。因此，最小化函数估值的数量至关重要，而其他计算的成本要低得多。
+
+	\item 
+	%Evaluating the function can be done in parallel. As an example, training feedforward deep neural networks over different architectures can be done in parallel. 
+	评估函数可以并行进行。例如，在不同结构上训练前馈深度神经网络可以并行进行。
+\end{enumerate}
+
+
+%More formally, we consider the following optimization problem
+更形式化的，我们考虑如下的优化问题：
+\begin{equation*}
+    \min_{\x_i \in GF(q_i) } \quad f(\x),
+\end{equation*}
+%where $\x$ is the representation of discrete hyperparameters, each taking value from $q_i \geq 2 $ possible discrete values and thus in $GF(q)$, the  Galois field of order $q$.  The example to keep in mind is that the objective $f(\x)$ is the test error of the neural network trained with hyperparameters $\x$. Note that $\x$ has a search space of size $\prod_i q_i \geq 2^n $,  exponentially large in the number of different  hyperparameters.  
+其中，$\x$是离散超参数的表示，每个参数取 $q_i \geq 2 $ 可能的离散值，因此在$GF(q)$中，是伽罗瓦域有$q$阶。要记住的例子是，目标$f(\x)$是用超参数$\x$训练的神经网络的测试误差。请注意，$\x$有一个大小为$\prod_i q_i \geq 2^n $的搜索空间，不同超参数的数量呈指数级增长。
+
+\section{
+	%Hyperparameter optimization algorithms
+	超参数和优化算法
+	}
+
+%The properties of the problem mentioned before prohibits the use of the algorithms we have studied thus far, which are all suitable for continuous optimization.  A naive method is to perform a  grid search over all hyperparameters, but this quickly becomes infeasible.
+%An emerging field of research in recent years, called \emph{AutoML}, aims to choose hyperparameters automatically. The following techniques are in common use: 
+前面提到的问题的性质禁止使用我们迄今为止研究的算法，因为这些算法都适用于连续优化。一种简单的方法是对所有超参数执行网格搜索，但这很快变得不可行。
+近年来，一个名为\emph{AutoML}的新兴研究领域旨在自动选择超参数。以下是常用的技术：
+
+\begin{itemize}
+	\setlength{\itemsep}{0pt}
+	\item 
+	%{\bf Grid search}, try all possible assignments of hyperparameters and return the best. This becomes infeasible very quickly with $n$ - the number of hyperparameters. 
+	{\bf 网格搜索}，尝试所有可能的超参数赋值，并返回最佳值。这很快就变得不可行，因为超参数的数量是$n$。
+	\item 
+	%{\bf Random search}, where one randomly picks some choices of hyperparameters, evaluates their function objective, and chooses the one choice of hyperparameters giving best performance.  An advantage of this method is that it is easy to implement in parallel. 
+	{\bf 随机搜索}，其中随机选择一些超参数，评估它们的函数目标值，并选择性能最佳的超参数。这种方法的优点是易于并行实现。
+	\item 
+	%{\bf Successive Halving and Hyperband},  random search combined with early stopping using multi-armed bandit techniques. These gain a small constant factor improvement over random search. 
+	{\bf连续减半和扩张}，随机搜索结合使用多臂游戏机技术提前停止。与随机搜索相比，这些算法获得了一个小的常数因子改进。
+	\item 
+	%{\bf Bayesian optimization}, a statistical approach which has a prior over the objective and tries to iteratively pick an evaluation point which reduces the variance in objective value. Finally it picks the point that attains the lowest objective objective with highest confidence. This approach is sequential in nature and thus difficult to parallelize. Another important question is how to choose a good prior. 
+	{\bf 贝叶斯优化}是一种统计方法，它对目标有优先权，并试图迭代选择一个评估点，以减少目标值的方差。最后，它选择了以最高置信度心达到最低目标值的点。这种方法本质上是顺序的，因此很难并行化。另一个重要的问题是如何选择一个好的先验知识。
+\end{itemize}
+
+%The hyperparameter optimization problem is essentially a combinatorial optimization problem with exponentially large search space.
+%Without further assumptions, this optimization problem is information-theoretically  hard. Such assumptions are explored in the next section with an accompanying algorithm. 
+超参数优化问题本质上是一个具有指数大搜索空间的组合优化问题。
+如果没有进一步的假设，这个优化问题在理论上是很难解决的。下一节将探讨这些假设，并给出相应的算法。
+
+%Finally, we note that a simple but hard-to-beat benchmark is random search with double budget. That is, compare the performance of a method to that of random search, but allow random search double the query budget of your own method. 
+最后，我们注意到一个简单但难以超越的基准是双预算随机搜索。也就是说，将一个方法的性能与随机搜索的性能进行比较，但允许随机搜索将您自己的方法的查询预算增加一倍。
+
+\section{
+	%A Spectral Method
+	一个谱方法
+	} 
+
+%For simplicity, in this section we consider the case in which hyperparameters are binary. This retains the difficulty of the setting, but makes the mathematical derivation simpler. The optimization problem now becomes
+为简单起见，在本节中，我们考虑超参数为二进制的情况。这保留了该场景的难度，但使数学推导更简单。优化问题现在变为
+\begin{equation}
+	\label{hyp_opt}
+    \min_{\x \in \{-1, 1\}^n} \quad f(\x). 
+\end{equation}
+
+
+%The method we describe in this section is inspired by the following key observation: 
+\emph{although the whole search space of hyperparameters is exponentially large, it is often the case in practice that only a few hyperparameters together play a significant role in the performance of a deep neural network}.
+我们在本节中描述的方法受到以下关键观察结果的启发：\emph{尽管超参数的整个搜索空间是指数级的大，但在实践中，通常只有少数超参数一起在深度神经网络的性能中发挥重要作用}。
+
+%To make this intuition more precise, we need some definitions and facts from Fourier analysis of Boolean functions.
+为了使这种直觉更加精确，我们需要一些布尔函数的傅里叶分析的定义和事实。
+\begin{fact}
+	%Any function $f: \{-1, 1\}^n \rightarrow [-1, 1]$ can be uniquely represented in the Fourier basis
+	任何函数 $f: \{-1, 1\}^n \rightarrow [-1, 1]$ 都可以在傅里叶基中唯一表示
+	$$
+	f(\x) = \sum_{S \subseteq [n]} \alpha_s \hat{\chi}_S (\x),
+	$$
+	%where each Fourier basis function
+	其中，傅里叶基函数
+	$$
+	\hat{\chi}_S (\x) = \prod_{i \in S} x_i.
+	$$
+	%is a monomial, and thus $f(\x)$ has a polynomial representation.
+	是单项式，因此 $f(\x)$ 具有多项式表示。
+\end{fact}
+%Now we are ready to formalize our key observation in the following assumption:
+现在，我们准备在以下假设中形式化我们的关键观察结果：
+\begin{assumption}
+	\label{asp_sparsity}
+	%The objective function $f$ in the hyperparameter optimization problem \eqref{hyp_opt} is low degree and sparse in the Fourier basis, i.e.
+	超参数优化问题\eqref{hyp_opt}中的目标函数$f$在傅里叶基中是低阶稀疏的，即
+	\begin{equation}
+	\label{asp}		
+	f(x) \approx \sum_{|S| \le d} \alpha_S \hat{\chi}_S (x), \quad \|\pmb{\alpha}\|_1 \le k,
+	\end{equation}
+	%where $d$ is the upper bound of polynomial degree, and $k$ is the sparsity of Fourier coefficient $\pmb{\alpha}$ (indexed by $S$) in $\ell_1$ sense (which is a convex relaxation of $\|\pmb{\alpha}\|_0$, the true sparsity).
+	其中，$d$是多项式次数的上界，$k$是 $\ell_1$意义上的傅立叶系数$\pmb{\alpha}$（由$S$索引）的稀疏性（这是$\|\pmb{\alpha}\|_0$的凸松弛，即真正的稀疏性）。
+\end{assumption}
+
+\begin{remark}
+	%Clearly this assumption does not always hold.
+	%For example, many deep reinforcement learning algorithms nowadays rely heavily on the choice of the random seed, which can also be seen as a hyperparameter.
+	%If $\x \in \{-1,1\}^{32}$ is the bit representation of a int32 random seed, then there is no reason to assume that a few of these bits should play a more significant role than the others. 
+	显然，这种假设并不总是成立的。
+	例如，当今许多深度强化学习算法严重依赖于随机种子的选择，这也可以被视为超参数。
+	如果 $\x \in \{-1,1\}^{32}$ 是int32随机种子的位表示，那么没有理由认为其中一些位应该比其他位发挥更重要的作用。
+\end{remark}
+
+%Under this assumption, all we need to do now is to find out the few important sets of variables $S$'s, as well as their coefficients $\alpha_S$'s, in the approximation \eqref{asp}.
+%Fortunately, there is already a whole area of research, called \emph{compressed sensing}, that aims to recover a high-dimensional but sparse vector, using only a few linear measurements. 
+%Next, we will briefly introduce the problem of compressed sensing, and one useful result from the literature.
+%After that, we will introduce the Harmonica algorithm, which applies compressed sensing techniques to solve the hyperparameter optimization problem \eqref{hyp_opt}.
+在这个假设下，我们现在需要做的就是，在近似值\eqref{asp}下，找出 $S$ 的几个重要变量集，以及它们的系数$\alpha_S$。
+幸运的是，已经有一个称为压缩感知（compressed sensing）的整个研究领域，其目的是仅使用少量线性测量来恢复高维但稀疏的向量。
+接下来，我们将简要介绍压缩感知的问题，以及文献中一个有用的结果。
+然后，我们将介绍 Harmonica算法，它应用压缩感知技术来解决超参数优化问题\eqref{hyp_opt}。
+
+\subsection{
+	%Background: Compressed Sensing
+	背景：压缩感知
+	} 
+\label{sub:background_compressed_sensing}
+
+%The problem of compressed sensing is as follows.
+%Suppose there is a hidden signal $\x \in \reals^n$ that we cannot observe.
+%In order to recover $\x$, we design a measurement matrix $\bA \in \reals^{m \times n}$, and obtain noisy linear measurements $\y = \bA \x + \pmb{\eta} \in \reals^m$, where $\pmb{\eta}$ is some random noise.
+%The difficulty arises when we have a limited budget for measurements, i.e. $m \ll n$.
+%Note that even without noise, recovering $\x$ is non-trivial since $\y = \bA \x$ is an underdetermined linear system, therefore if there is one solution $\x$ that solves this linear system, there will be infinitely many solutions.
+%The key to this problem is to assume that $\x$ is $k$-sparse, that is, $\|\x\|_0 \le k$.
+%This assumption has been justified in various real-world applications; for example, natural images tend to be sparse in the Fourier/wavelet domain, a property which forms the bases of many image compression algorithms.
+压缩感知的问题如下。
+假设有一个我们无法观察到的隐藏信号 $\x \in \reals^n$。
+为了恢复$\x$，我们设计了一个测量矩阵$\bA \in \reals^{m \times n}$，并获得噪声线性测量$\y = \bA \x + \pmb{\eta} \in \reals^m$，其中$\pmb{\eta}$是一些随机噪声。
+当我们的测量预算有限时，困难就出现了，如 $m \ll n$。
+请注意，即使没有噪声，恢复$\x$也是非常重要的，因为$\y = \bA \x$是一个欠定线性系统，因此如果有一个解$\x$可以解这个线性系统，那么将有无限多个解。
+这个问题的关键是假设$\x$是$k$-稀疏的，即 $\|\x\|_0 \le k$。
+这种假设在各种实际应用中都是合理的；例如，自然图像在傅里叶/小波域中往往是稀疏的，这一特性构成了许多图像压缩算法的基础。
+
+%Under the assumption of sparsity, the natural way to recover $\x$ is to solve a least squares problem, subject to some sparsity constraint $\|\x\|_0 \le k$. 
+%However, $\ell_0$ norm is difficult to handle, and it is often replaced by $\ell_1$ norm, its convex relaxation.
+%One useful result from the literature of compressed sensing is the following.
+在稀疏性假设下，恢复$\x$的自然方法是解决一个最小二乘问题，受一些稀疏性约束 $\|\x\|_0 \le k$。
+然而，$\ell_0$ 范数很难处理，它通常被它的凸松弛 $\ell_1$范数取代。
+压缩传感文献中的一个有用结果如下。
+\begin{proposition}[
+	%Informal statement of Theorem 4.4 in \cite{rauhut2010compressive}
+	非正式 Theorem 4.4 in \cite{rauhut2010compressive}
+	]
+\label{cs_prop}
+%Assume the ground-truth signal $\x \in \reals^n$ is $k$-sparse.
+%Then, with high probability, using a randomly designed $\bA \in \reals^{m \times n}$ that is ``near-orthogonal'' (random Gaussian matrix, subsampled Fourier basis, etc.), with $m = O(k \log(n) / \epsilon)$ and $\|\pmb{\eta}\|_2 = O(\sqrt{m})$, $\x$ can be recovered by a convex program
+假设真值信号$\x \in \reals^n$是$k$-sparse。
+然后，以很高的概率，使用随机设计矩阵 $\bA \in \reals^{m \times n}$，该矩阵是近似正交的（随机高斯矩阵、二次抽样傅里叶基等），其中，$m = O(k \log(n) / \epsilon)$，$\|\pmb{\eta}\|_2 = O(\sqrt{m})$，可以通过如下凸优化恢复$\x$
+\begin{equation}
+\label{cs_cvx}
+\min_{\z \in \reals^n} \|\y - \bA \z\|_2^2 \quad {\rm s.t.} \quad \|\z\|_1 \le k,
+\end{equation}
+%with accuracy $\|\x - \z\|_2 \le \epsilon$.	
+具有准确率 $\|\x - \z\|_2 \le \epsilon$
+\end{proposition}
+%This result is remarkable; in particular, it says that the number of measurements needed to recover a sparse signal is independent of the dimension $n$ (up to a logarithm term), but only depends on the sparsity $k$ and the desired accuracy $\epsilon$. \footnote{It also depends on the desired high-probability bound, which is omitted in this informal statement.}
+这一结果是卓著的；特别是，它表示恢复稀疏信号所需的测量数量与维数$n$（最多为对数项）无关，但仅取决于稀疏度$k$和所需精度$\epsilon$。\footnote{还取决于所需的高概率界，在本非正式声明中省略了该界。}
+\begin{remark}
+	%The convex program \eqref{cs_cvx} is equivalent to the following LASSO problem
+	凸规划\eqref{cs_cvx}等价于下面的 LASSO 问题
+	$$
+	\min_{\z \in \reals^n} \|\y - \bA \z\|_2^2 + \lambda \|\z\|_1,
+	$$
+	%with a proper choice of regularization parameter $\lambda$.
+	%The LASSO problem is an unconstrained convex program, and has efficient solvers, as per the algorithms we have studied in this course.
+	其中，选择适当的正则化参数$\lambda$。
+	LASSO 问题是一个无约束凸规划，根据我们在本课程中研究的算法，它有高效的求解器。
+\end{remark}
+
+
+\subsection{
+	%The Spectral Algorithm
+	谱方法
+	} 
+
+%The main idea is that, under Assumption \ref{asp_sparsity}, we can view the problem of hyperparameter optimization as recovering the sparse signal $\pmb{\alpha}$ from linear measurements.
+%More specifically, we need to query $T$ random samples, $f(\x_1), \dots, f(\x_T)$, and then solve the LASSO problem
+其主要思想是，在假设\ref{asp_sparsity}下，我们可以将超参数优化问题视为从线性测量中恢复稀疏信号$\pmb{\alpha}$。
+更具体地说，我们需要查询$T$随机样本，$f(\x_1), \dots, f(\x_T)$，然后解决 LASSO 问题
+\begin{equation}
+\label{lasso_hyp}
+\min_{\pmb{\alpha}} \quad \sum_{t=1}^{T} (\sum_{|S| \le d} \alpha_S \hat{\chi}_S (\x_t) - f(\x_t) )^2 + \lambda \|\pmb{\alpha}\|_1,
+\end{equation}
+%where the regularization term $\lambda \|\pmb{\alpha}\|_1$ controls the sparsity of $\pmb{\alpha}$.
+%Also note that the constraint $|S| \le d$ not only implies that the solution is a low-degree polynomial, but also helps to reduce the ``effective'' dimension of $\pmb{\alpha}$ from $2^n$ to $O(n^d)$, which makes it feasible to solve this LASSO problem.
+其中，正则化项$\lambda \|\pmb{\alpha}\|_1$控制$\pmb{\alpha}$的稀疏性。
+还要注意，约束$|S| \le d$不仅意味着解是一个低次多项式，而且有助于将$\pmb{\alpha}$的“有效”维数从$2^n$降低到$O(n^d)$，这使得求解这个 LASSO 问题变得可行。
+
+%Denote by $S_1, \dots, S_s$ the indices of the $s$ largest coefficients of the LASSO solution, and define
+用 $S_1, \dots, S_s$ 表示 LASSO 解的 $s$ 最大系数的指数，并定义
+$$
+g(\x) = \sum_{i \in [s]} \alpha_{S_i} \hat{\chi}_{S_i} (\x),
+$$
+%which involves only a few dimensions of $\x$ since the LASSO solution is sparse and low-degree.
+%The next step  is to set the variables outside $\cup_{i\in [s]} S_i$ to arbitrary values, and compute a minimizer $\x^{*} \in \arg \min g(\x)$.
+%In other words, we have reduced the original problem of optimizing $f(\x)$ over $n$ variables, to the problem of optimizing $g(\x)$ (an approximation of $f(\x)$) over only a few variables (which is now feasible to solve).
+%One remarkable feature of this algorithm is that the returned solution $\x^{*}$ may not belong to the samples $\{\x_1, \dots, \x_T\}$, which is not the case for  other existing methods (such as random search).
+因为套索解是稀疏的，度很低，所以只涉及$\x$的几个维度。
+下一步是将 $\cup_{i\in [s]} S_i$之外的变量设置为任意值，并计算最小值 $\x^{*} \in \arg \min g(\x)$。
+换言之，我们已经将原来$n$变量的优化问题 $f(\x)$简化为关于几个变量的问题的优化问题 $g(\x)$ （  $f(\x)$的一个近似）（现在可以解决）。
+该算法的一个显著特点是，返回的解 $\x^{*}$可能不属于样本 $\{\x_1, \dots, \x_T\}$，这与其他现有方法（如随机搜索）不同。
+
+%Using theoretical results from compressed sensing (e.g. Proposition \ref{cs_prop}), we can derive the following guarantee for the sparse recovery of $\pmb{\alpha}$ via LASSO.
+利用压缩感知的理论结果（例如命题\ref{cs_prop}），我们可以通过 LASSO 推导出$\pmb{\alpha}$稀疏恢复的以下保证。
+\begin{theorem}[
+	%Informal statement of Lemma 7 in \cite{hazan2018hyperparameter}
+	\cite{hazan2018hyperparameter} 中Lemma 7 的非正式声明
+	]
+	%Assume $f$ is $k$-sparse in the Fourier expansion.
+	%Then, with $T = O(k^2 \log(n) / \epsilon)$ samples, the solution of the LASSO problem \eqref{lasso_hyp} achieves $\epsilon$ accuracy.
+	假设在傅里叶展开中，$f$是$k$-稀疏的。
+	然后，使用$T = O(k^2 \log(n) / \epsilon)$样本，LASSO 问题的解\eqref{lasso_hyp}达到$\epsilon$精度。
+\end{theorem}
+
+
+%Finally, the above derivation can be considered as only one stage in a multi-stage process, each iteratively setting the value of a few more variables that are the most significant. 
+最后，上述推导可以被视为多阶段过程中的一个阶段，每个阶段都迭代地设置几个最重要的变量的值。
+
+
+
+
+\newpage
+\section{
+	%Bibliographic Remarks
+	书目说明
+	}
+
+%For a nice exposition on hyperparameter optimization see \cite{recht1, recht2}, in which the the benchmark of comparing to Random Search with double queries was proposed. 
+有关超参数优化的详细说明，请参见\cite{recht1, recht2}，其中提出了比较双查询随机搜索的测试基准。
+
+%Perhaps the simplest approach to HPO is random sampling of different choices of parameters and picking the best amongst the chosen evaluations \cite{Bergstra12}. Successive Halving (SH) algorithm was introduced \cite{successive}.  Hyperband further improves SH by automatically tuning the hyperparameters in SH \cite{hyperband}.
+也许HPO最简单的方法是对不同的参数选择进行随机抽样，并从所选的评估中选择最佳的\cite{Bergstra12}。\cite{successive} 中介绍了连续减半（SH）算法。Hyperband \cite{hyperband} 通过自动调整超参数进一步改进了SH算法。
+
+%The Bayesian optimization (BO) methodology is currently the most studied in HPO. For recent studies and algorithms of this flavor see \cite{tpe,bayesianOPT,multitaskBO,inputBO,inequBO,highDim,rbfbayesian}. 
+贝叶斯优化（BO）方法是目前HPO研究最多的方法。有关这种风格的最新研究和算法，请参见\cite{tpe,bayesianOPT,multitaskBO,inputBO,inequBO,highDim,rbfbayesian}。
+
+%The spectral approach for hyperparameter optimization was introduced in \cite{hazan2018hyperparameter}. 
+%For an in-depth treatment of compressed sensing see the survey of \cite{rauhut2010compressive}, and for Fourier analysis of Boolean functions see \cite{booleananalysis}.
+超参数优化的谱方法在\cite{hazan2018hyperparameter}中介绍。
+有关压缩感知的深入讨论，请参阅\cite{rauhut2010compressive}综述；有关布尔函数的傅里叶分析，请参阅\cite{booleananalysis}。
+
+
