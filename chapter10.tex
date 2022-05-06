@@ -1,0 +1,420 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Regret minimization and online gradient descent 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\chapter{
+    %Second order methods for machine learning
+    机器学习二阶算法
+    }\label{sec:newton}
+\chaptermark{
+    %Second order methods
+    二阶算法
+    }
+
+
+%At this point in our course, we have exhausted the main techniques in first-order (or gradient-based) optimization. We have studied the main workhorse - stochastic gradient descent, the three acceleration techniques, and projection-free gradient methods. Have we exhausted optimization for ML? 
+在本课程的这一阶段上，我们已经用尽了一阶（或基于梯度的）优化的主要技术。我们研究了主要的工作方法---随机梯度下降、三种加速技术和无投影梯度方法。我们已经完成了ML的优化了吗？
+
+%In this section we discuss using higher derivatives of the objective function to accelerate optimization. The canonical method is Newton's method, which involves the second derivative or Hessian in high dimensions. The vanilla approach is computationally expensive since it involves matrix inversion in high dimensions that  machine learning problems usually require. 
+在本节中，我们将讨论使用目标函数的高阶导数来加速优化。标准方法是牛顿方法，它涉及高维的二阶导数或Hessian。普通方法的计算成本很高，因为它涉及机器学习问题通常需要的高维矩阵求逆。
+
+%However, recent progress in random estimators gives rise to linear-time second order methods, for which each iteration is as computationally cheap as gradient descent. 
+然而，随机估计的最新进展催生了线性时间二阶方法，对于这种方法，每次迭代的计算成本都和梯度下降法一样低。
+
+
+\section{
+    %Motivating example: linear regression
+    示例：线性回归
+    }
+
+%In the problem of linear regression we are given a set of measurements $\{\ba_i \in \reals^d, b_i \in \reals\} $, and the goal is to find a set of weights that explains them best in the mean squared error sense.  As a mathematical program, the goal is to optimize: 
+在线性回归问题中，我们给出了一组度量 $\{\ba_i \in \reals^d, b_i \in \reals\} $，目标是找到一组在均方误差意义下最能解释它们的权重。作为一个数学规划问题，目标是优化：
+$$ \min_{\x \in \reals^d} \left\{ \frac{1}{2} \sum_{i \in [m]} \left( \ba_i^\top \x - b_i \right)^2 \right\} , $$
+%or in matrix form, 
+或者写成矩阵形式
+$$ \min_\x f(\x) =  \left\{  \frac{1}{2} \| A \x - \bb \|^2 \right\} . $$
+%Here $A \in \reals^{m \times d}, \bb \in \reals^m$. Notice that the objective function $f$ is smooth, but not necessarily strongly convex. Therefore, all  algorithms that we have studied so far without exception, which are all first order methods, attain rates which are $\poly(\frac{1}{\eps})$. 
+这里 $A \in \reals^{m \times d}, \bb \in \reals^m$。请注意，目标函数 $f$是平滑的，但不一定是强凸的。因此，到目前为止，我们所研究的所有算法都是一阶方法，它们的速率是 $\poly(\frac{1}{\eps})$。
+
+%However, the linear regression problem has a closed form solution that can be computed by taking the gradient to be zero, i.e. $ (A \x - \bb)^\top A   = 0$, which gives 
+然而，线性回归问题有一个封闭形式的解决方案，可以通过将梯度取为零来计算，即 $ (A \x - \bb)^\top A   = 0$，这将给出
+$$ \x = (A^\top A)^{-1} A^\top \bb . $$
+
+%The Newton direction is given by the inverse Hessian multiplied by the gradient, $\nabla^{-2} f(\x) \nabla f(\x)$. 
+%Observe that a single Newton step, i.e. moving in the Newton direction with step size one, from any direction gets us directly to the optimal solution in one iteration! (see exercises)
+牛顿方向由逆 Hessian 乘以梯度给出，$\nabla^{-2} f(\x) \nabla f(\x)$。
+观察到，一个牛顿步，即在牛顿方向上移动，步长为1，从任何方向开始，我们可以在一次迭代中直接找到最优解！（见练习）
+
+%More generally, Newton's method yields $O(\log \frac{1}{\eps})$ convergence rates for a large class of functions without dependence on the condition number of the function! We study this property next. 
+更一般地说，牛顿方法在不依赖于函数条件数的情况下，对一大类函数产生 $O(\log \frac{1}{\eps})$  收敛速度！接下来我们研究这个属性。
+
+
+
+\section{
+    %Self-Concordant Functions
+    自协调函数
+    }
+
+%In this section we define and collect some of the properties of a special class of functions, called self-concordant functions.  These functions allow Newton's method to run in time which is independent of the condition number. The class of self-concordant functions is expressive and includes quadratic functions, logarithms of inner products, a variety of barriers such as the log determinant, and many more. 
+在本节中，我们定义并收集了一类特殊函数的一些属性，称为自协调函数。这些函数允许牛顿方法在时间上运行，而时间与条件数无关。这类自协和函数具有很好的表达性，包括二次函数、内积的对数、各种障碍，如对数行列式等。
+
+%An excellent reference for this material is the lecture notes on this subject by Nemirovski \cite{NemirovskiBook}. We begin by defining self-concordant functions.
+Nemirovski\cite{NemirovskiBook}关于这一主题的课堂讲稿是本材料的一个很好的参考。我们首先定义自协调函数。
+\begin{definition}[
+    %Self-Concordant Functions
+    自协调函数
+    ]
+%Let $\K \subseteq \reals^n$ be a non-empty open convex set, and and let $f : \K \mapsto \reals$ be a $C^3$ convex function. Then, $f$ is said to be \text{self-concordant} if
+设 $\K \subseteq \reals^n$为非空的开凸集，$f : \K \mapsto \reals$ 为 $C^3$凸函数。那么，$f$被称为\text{自协调}如果
+$$|\nabla^3 f(\x)[\bh, \bh, \bh]| \leq 2(\bh^{\top} \hess f(\x) \bh)^{3/2},$$
+%where we have
+其中，我们有
+\begin{equation*}
+\nabla^k f(\x)[\bh_1, \dots, \bh_k] \defeq \frac{\partial^k}{\partial
+t_1\dots\partial t_k} |_{t_1=\dots=t_k} f(\x+t_1\bh_1 + \dots + t_k\bh_k).
+\end{equation*}
+\end{definition}
+%Another key object in the analysis of self concordant functions is the notion of a Dikin Ellipsoid, which is the unit ball around a point in the norm given by the Hessian $\|\cdot\|_{\hess f}$ at the point. We will refer to this norm as the \textit{local norm} around a point and denote it as $\|\cdot\|_{\x}$.
+%Formally, 
+自协调函数分析中的另一个关键对象是 Dikin椭球的概念，它是由Hessian $\|\cdot\|_{\hess f}$ 在该点（？？）给出的范数中围绕一点的单位球。我们将把这个范数称为一个点周围的\textit{局部范数}，并将其表示为$\|\cdot\|_{\x}$。
+形式上，
+%\begin{definition}[Dikin ellipsoid] The Dikin ellipsoid of radius $r$ centered at a point $\x$ is defined as 
+\begin{definition}[Dikin椭球] 半径为$r$的Dikin椭球体以点$\x$为中心定义为
+$$\ellipsoid_r(\x) \defeq \{\y\ |\ \|\y - \x\|_{\hess f(\x)} \leq r\}$$ 
+\end{definition}
+%One of the key properties of self-concordant functions that we use is that inside the Dikin ellipsoid, the function is well conditioned with respect to the local norm at the center. The next lemma makes this formal. The proof of this lemma can be found in \cite{NemirovskiBook}.
+我们使用的自协和函数的一个关键性质是，在Dikin椭球内部，该函数相对于中心的局部范数具有良好的条件。下一个引理使之正式。这个引理的证明可以在 \cite{NemirovskiBook}中找到。
+\begin{lemma} [见 \cite{NemirovskiBook}] 
+%For all $\h$ such that
+对于所有 $h$ 满足
+$\|\h\|_{\x} < 1$
+%we have that
+我们有
+\[ (1 - \|\h\|_{\x})^2 \hess f(\x) \preceq \hess
+f(\x + \h) \preceq \frac{1}{(1 - \|\h\|_{\x})^2}\hess f(\x)\]
+\end{lemma}
+%The next lemma establishes that the function is smooth in the Dikin
+%ellipsoid. The proof of this lemma can be found in \cite{NemirovskiBook}
+%\begin{lemma}[See \cite{NemirovskiBook}]
+%\label{lemma:smoothness}
+%For all $\h$ such that
+%$\|\h\|_{\x} < 1$ we have that 
+%\[f(\x+\h) \leq f(\x) + \langle \nabla f(\x), \h \rangle + \rho\left(
+%\|\h\|_{\x} \right)
+%\]
+%where $\rho(x) \defeq -\ln(1 - x) - x$
+%\end{lemma}
+
+%Another key quantity, which is used both as a potential function as well as a dampening for the step size in the analysis of Newton's method, is the Newton Decrement: 
+另一个关键量是牛顿减量，在牛顿法分析中，它既是势函数，也是步长的阻尼：
+$$\lambda_\x \defeq \|\nabla f(\x)\|_{\x}^{*} =
+\sqrt{\nabla f(\x)^{\top} \hessinv f(\x) \nabla f(\x)} .$$ 
+%The following lemma quantifies how $\lambda_\x$ behaves as a potential by showing that once it drops below 1, it ensures that the minimum of the function lies in the current Dikin ellipsoid. This is the property which we use crucially in our analysis. The proof can be found in \cite{NemirovskiBook}.
+下面的引理量化了 $\lambda_\x$作为势函数的行为，表明一旦它降到1以下，它确保函数的最小值位于当前的Dikin椭球中。这是我们在分析中使用的关键属性。证明可以在\cite{NemirovskiBook}中找到。
+\begin{lemma} [详见 \cite{NemirovskiBook}]
+\label{lemma:lambdalemma}
+If $\lambda_\x < 1$ then 
+\[ \|\x - \x^*\|_{\x}  \leq \frac{\lambda_\x}{1 - \lambda_\x}\]
+\end{lemma}
+
+
+
+
+\sectionmark{
+    %Newton's method
+    牛顿法
+    }
+\section{
+    %Newton's method for self-concordant functions
+    自协调函数的牛顿法
+    }
+
+%Before introducing the linear time second order methods, we start by introducing a robust Newton's method and its properties.  The pseudo-code is given in Algorithm \ref{alg:newton}.  
+在介绍线性时间二阶方法之前，我们先介绍鲁棒牛顿方法及其性质。伪代码在算法\ref{alg:newton}中给出。
+
+%The usual analysis of Newton's method allows for quadratic convergence, i.e. error $\eps$ in $O(\log \log \frac{1}{\eps})$ iterations for convex objectives. However, we prefer to present a  version of Newton's method which is robust to certain random estimators of the Newton direction. This yields a slower rate of $O(\log \frac{1}{\eps})$.  The faster running time per iteration, which does not require matrix manipulations, more than makes up for this. 
+牛顿方法的通常分析允许二次收敛，即凸目标在 $O(\log \log \frac{1}{\eps})$迭代中的错误$\eps$。然而，我们更倾向于提出牛顿法的一个版本，它对牛顿方向的某些随机估计具有鲁棒性。这会产生较慢的速率 $O(\log \frac{1}{\eps})$。每次迭代的运行时间更快，不需要矩阵操作，这足以弥补这一点。
+
+
+\begin{algorithm}[h!]
+\caption{\textbf{
+    %Robust Newton's method
+    鲁棒牛顿法
+    }}
+\label{alg:newton}
+\begin{algorithmic}
+\STATE {\bfseries 
+%Input: $T, \x_1$
+输入：$T, \x_1$
+}
+\FOR{$t = 1$ to $T$}
+\STATE{
+    令 $c = \frac{1}{8}$, $\eta = \min\{  c ,  \frac{c}{8\lambda_{\x_t} } \} $. 
+    令 $\frac{1}{2} {\nabla}^{-2}f(\x_t) \preceq \tilde{\nabla}_t^{-2} \preceq 2 {\nabla}^{-2}f(\x_t) $. }
+\STATE{$\x_{t+1} = \x_t - \eta \tilde{\nabla}^{-2}_t \nabla f(\x_t) $}
+\ENDFOR
+
+\STATE{\textbf{return} $\x_{T+1}$}
+
+\end{algorithmic}
+\end{algorithm}
+
+%It is important to notice that every two consecutive points are within the same Dikin ellipsoid of radius $\frac{1}{2}$. Denote $\nabla_t = \nabla_{\x_t}$, and similarly for the Hessian. Then we have:
+值得注意的是，每两个连续点都位于半径 $\frac{1}{2}$ 的同一个 Dikin椭球体内。记 $\nabla_t = \nabla_{\x_t}$，相似地表示Hessian。然后我们有：
+$$ \| \x_t - \x_{t+1} \|_{\x_t}^2 =  \eta^2 \nabla_t^\top  \tilde{\nabla}^{-2}_t  \nabla_t^2 \tilde{\nabla}^{-2}_t \nabla_t \leq 4 \eta^2  \lambda_t^2 \leq \frac{1}{2} . $$ 
+
+%The advantage of Newton's method as applied to self-concordant functions is its linear convergence rate, as given in the following theorem.
+牛顿法应用于自协调函数的优点是其线性收敛速度，如下定理所示：
+\begin{theorem}
+%Let $f$ be self-concordant, and $f(\x_1) \leq M$, then
+令 $f$ 是自协调的, 有 $f(\x_1) \leq M$, 则
+$$ h_t = f(\x_t) - f(\x^*) \leq O( {M} +   \log \frac{1}{\eps} ) $$
+\end{theorem}
+
+%The proof of this theorem is composed of two steps, according to the magnitude of the Newton decrement. 
+根据牛顿减量的大小，这个定理的证明分为两步。
+\paragraph{
+    %Phase 1: damped Newton
+    第 1 阶段：阻尼牛顿法
+    }
+
+\begin{lemma}
+%As long as $\lambda_\x \geq \frac{1}{8}$, we have that
+因为 $\lambda_\x \geq \frac{1}{8}$，我们有
+$$ h_t \leq - \frac{1}{4} c $$
+\end{lemma}
+\begin{proof}[证明]
+%Using similar analysis to the descent lemma we have that
+使用下降引理 相似的分析，我们有：
+\begin{eqnarray*}
+& f(\x_{t+1}) - f(\x_t) \\
+& \leq \nabla_t^\top (\x_{t+1} - \x_t) + \frac{1}{2} (\x_t - \x_{t+1})^\top \nabla^2 (\zeta) (\x_t - \x_{t+1} ) & \mbox{Taylor} \\
+& \leq \nabla_t^\top (\x_{t+1} - \x_t) +  \frac{1}{4} (\x_t - \x_{t+1})^\top \nabla^2 (\x_t) (\x_t - \x_{t+1} ) &  \x_{t+1} \in \ellipsoid_{1/2}(\x_t)   \\
+& = - \eta \nabla_{t}^\top \tilde{\nabla}_{t}^{-2} \nabla_{t}  + \frac{1}{4} \eta^2 \nabla_t ^\top  \tilde{\nabla}^{-2}_t  \nabla_t^2 \tilde{\nabla}^{-2}_t \nabla_t    \\
+& = - \eta \lambda_t^2 + \frac{1}{4} \eta^2 \lambda_t^2 \leq - \frac{1}{16} c
+\end{eqnarray*}
+\end{proof}
+%The conclusion from this step is that after $O(M)$ steps, Algorithm \ref{alg:newton} reaches a point for which $\lambda_\x \leq \frac{1}{8}$. According to Lemma \ref{lemma:lambdalemma}, we also have that $\|\x - \x^* \|_\x \leq \frac{1}{4}$, that is, the optimum is in the same Dikin ellipsoid as the current point. 
+从这一步得出的结论是，在 $O(M)$步骤之后，算法\ref{alg:newton}到达一个点，该点满足 $\lambda_\x \leq \frac{1}{8}$。根据引理\ref{lemma:lambdalemma}，我们还有$\|\x - \x^* \|_\x \leq \frac{1}{4}$，也就是说，最优值与当前点在同一个Dikin椭球中。
+
+
+\paragraph{
+    %Phase 2: pure Newton
+    第 2阶段：纯牛顿法
+    } 
+
+%In the second phase our step size is changed to be larger. In this case, we are guaranteed that the Newton decrement is less than one, and thus we know that the global optimum is in the same Dikin ellipsoid as the current point. In this ellipsoid, all Hessians are equivalent up to a factor of two, and thus Mirrored-Descent with the inverse Hessian as preconditioner becomes gradient descent. We make this formal below. 
+在第二阶段，我们的步长变大。在这种情况下，我们保证牛顿减量小于1，因此我们知道全局最优解与当前点在同一个Dikin椭球中。在这个椭球体中，所有的Hessian矩阵都相当于变大了两倍，因此，以逆Hessians作为预条件的镜像下降法变成了梯度下降法。我们在下面将其形式化。
+
+\begin{algorithm}[h!]
+\caption{\textbf{
+    %Preconditioned Gradient Descent
+    预条件的梯度下降
+    }}
+\label{alg:MD-sc}
+\begin{algorithmic}
+\STATE {\bfseries 
+%Input: $P,T$
+输入：$P,T$
+}
+\FOR{$t = 1$ to $T$}
+\STATE{$\x_{t+1} = \x_t - \eta P^{-1} \nabla f(\x_t) $}
+\ENDFOR
+\STATE{\textbf{return} $\x_{T+1}$}
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{lemma} \label{thm:MD-sc}
+%Suppose that $ \frac{1}{2} P \preceq \nabla^2 f(\x) \preceq 2 P$, and $\| \x_1 - \x^*\|_P \leq \frac{1}{2}$, then Algorithm \ref{alg:MD-sc} converges as
+假设$ \frac{1}{2} P \preceq \nabla^2 f(\x) \preceq 2 P$，以及 $\| \x_1 - \x^*\|_P \leq \frac{1}{2}$，那么算法\ref{alg:MD-sc}收敛为
+$$ h_{t+1} \leq  h_1  e^{- \frac{1}{8}  t} .$$
+\end{lemma}
+
+%This theorem follows from noticing that the function $g(\z) = f(P^{-1/2} \x)$ is $\frac{1}{2}$-strongly convex and $2$-smooth, and using Theorem \ref{thm:basicGDunconstrained}. It can be shown that gradient descent on $g$ is equivalent to Newton's method in $f$. Details are left as an exercise. 
+注意到函数 $g(\z) = f(P^{-1/2} \x)$是$\frac{1}{2}$-强凸的，$2$-光滑的，并使用定理\ref{thm:basicGDunconstrained} 可以证明该定理。可以证明，梯度下降法在 $g$上等价于牛顿法在$f$。细节留作练习题。
+
+%An immediate corollary is that Newton's method converges at a rate of $O(\log \frac{1}{\eps})$ in this phase. 
+一个直接的推论是，牛顿的方法在这个阶段以 $O(\log \frac{1}{\eps})$的速度收敛。
+
+
+
+
+
+\section{
+    %Linear-time second-order methods
+    线性时间的二阶算法
+    }
+
+
+%Newton's algorithm is of foundational importance in the study of mathematical programming in general. A major application are interior point methods for convex optimization, which are the most important polynomial-time algorithms for general constrained convex optimization. 
+牛顿算法在一般数学规划研究中具有基础地位的重要性。一个主要的应用是凸优化的内点法，这是一般约束凸优化最重要的多项式时间算法。
+
+%However, the main downside of this method is the need to maintain and manipulate matrices - namely the Hessians. This is completely impractical for machine learning applications in which the dimension is huge. 
+然而，这种方法的主要缺点是需要维护和操作矩阵---确切的说是Hessian 矩阵。这对于规模巨大的机器学习应用来说是完全不切实际的。
+
+%Another significant downside is the non-robust nature of the algorithm, which makes applying it in stochastic environments challenging. 
+另一个显著的缺点是该算法的非鲁棒性，这使得它在随机环境中的应用具有挑战性。
+
+%In this section we show how to apply Newton's method to machine learning problems. This involves relatively new developments that allow for linear-time per-iteration complexity, similar to SGD, and theoretically superior running times. At the time of writing, however, these methods are practical only for convex optimization, and have not shown superior performance on optimization tasks involving deep neural networks. 
+在本节中，我们将展示如何将牛顿方法应用于机器学习问题。这涉及到相对较新的发展，允许每次迭代的线性时间复杂度，类似于SGD，并且理论上具有优越的运行时间。然而，在撰写本文时，这些方法仅适用于凸优化，在涉及深度神经网络的优化任务中没有表现出优越的性能。
+
+%The first step to developing a linear time Newton's method is an efficient stochastic estimator for the Newton direction, and the Hessian {\bf inverse}. 
+发展线性时间牛顿法的第一步是对牛顿方向和Hessian{\bf逆}进行有效的随机估计。
+
+\subsection{
+    %Estimators for the Hessian Inverse
+    Hessian逆的估计器
+    }
+\label{sec:estimators}
+
+%The key idea underlying the construction is the following well known fact about the Taylor series expansion of the matrix inverse.
+构造的关键思想是关于矩阵逆的泰勒级数展开，也即以下众所周知的事实。
+\begin{lemma}
+\label{fact:inverse}
+%For a matrix $A \in \reals^{d\times d}$ such that $A \succeq 0 \text{ and } \|A\| \leq 1$, we have that \[ A^{-1} = \sum_{i=0}^{\infty} (I - A)^i\]
+对于满足  $A \succeq 0 \text{ 和 } \|A\| \leq 1$ 的矩阵 $A \in \reals^{d\times d}$ ，我们有  \[ A^{-1} = \sum_{i=0}^{\infty} (I - A)^i\]
+\end{lemma}
+
+
+%We propose two unbiased estimators based on the above series.  To define the first estimator pick a probability distribution over non-negative integers $\{p_i\}$ and sample $\hat{i}$ from the above distribution. Let $X_1, \ldots X_{\hat{i}}$ be independent samples of the Hessian $\hess f$ and define the estimator as
+基于上述序列，我们提出了两种无偏估计器。为了定义第一个估计器，从上述分布中选取非负整数 $\{p_i\}$ 和样本 $\hat{i}$ 的概率分布。假设 $X_1, \ldots X_{\hat{i}}$是Hessian$\hess f$的独立样本，并将估计器定义为
+\begin{definition}[
+    %Estimator 1
+    估计器 1
+    ]\label{def:estimator1}
+\[\hestinv f = \frac{1}{p_{\hat{i}}}
+\prod_{j=1}^{\hat{i}}(I - X_j)\]\end{definition} 
+%Observe that our estimator of the Hessian inverse is unbiased, i.e.
+%$\E [\hat{X}] = \hessinv f$ at any point.  Estimator 1 has the disadvantage that in a single sample it incorporates only one term of the Taylor series.
+注意到我们 Hessian 逆的估计器$\E [\hat{X}] = \hessinv f$ 在任意点处是无偏的。估计器1的缺点是，在单个样本中，它只包含泰勒级数的一项。
+
+%The second estimator below is based on the observation that the above series has the following succinct recursive definition, and is more efficient.
+下面的第二个估计器基于这样一个观察结果：上面的序列具有以下简洁的递归定义，并且更有效。
+
+%For a matrix $A$ define \[A^{-1}_j = \sum_{i=0}^{j} (I - A)^i\] i.e.
+%the first $j$ terms of the above Taylor expansion. It is easy to see that the following recursion holds for $A^{-1}_j$
+对于矩阵 $A$ 定义  \[A^{-1}_j = \sum_{i=0}^{j} (I - A)^i\]，也即
+上述泰勒展开的第一个  $j$ 项集合。易于知道，如下的递归对 $A^{-1}_j$ 成立：
+\[A^{-1}_j = I + (I-A)A^{-1}_{j-1}\]
+
+%Using the above recursive formulation, we now describe an unbiased estimator of $\hessinv f$ by deriving an unbiased estimator $\hestinv f_j$ for $\hessinv f_j$.
+使用上述递归公式，我们现在通过推导 $\hessinv f_j$的无偏估计 $\hestinv f_j$来描述 $\hessinv f$ 的无偏估计。
+\begin{definition}[
+    %Estimator 2
+    估计器 2
+    ]
+\label{def:estimator2}
+%Given $j$ independent and unbiased samples $\{X_1 \ldots X_j\}$ of the hessian $\hess f$.
+给定 $j$ 个独立无偏的样本 $\{X_1 \ldots X_j\}$ 具有 Hessian $\hess f$.
+%Define $\{\hestinv f_0 \ldots \hestinv f_j\}$ recursively as follows
+递归的定义 $\{\hestinv f_0 \ldots \hestinv f_j\}$ 如下：
+\[ \hestinv f_0 = I\]
+\[ \hestinv f_t = I + (I-X_j)\hestinv f_{t-1}\]
+\end{definition}
+
+%It can be readily seen that $\E[\hestinv f_j] = \hessinv f_j$ and therefore $\E[\hestinv f_j] \rightarrow \hessinv f$ as $j \rightarrow \infty$ giving us an unbiased estimator in the limit.
+可以很容易地看出，$\E[\hestinv f_j] = \hessinv f_j$，因此，$\E[\hestinv f_j] \rightarrow \hessinv f$ 作为$j \rightarrow \infty$ 给我们提供了在极限上一个无偏估计。
+
+
+
+\subsection{
+    %Incorporating the estimator
+    结合估计器
+    } 
+
+%Both of the above estimators can be computed using only Hessian-vector products, rather than matrix manipulations. For many machine learning problems, Hessian-vector products can be computed in linear time. Examples include:
+上述两种估计器都可以仅使用Hessian矩阵与向量积而不是矩阵运算来计算。对于许多机器学习问题，Hessian矩阵向量积可以在线性时间内计算。例如：
+\begin{enumerate}
+\item
+%Convex regression and SVM objectives over training data have the form 
+训练数据上的凸回归和SVM目标函数具有如下形式：
+$$ \min_{\w} f(\w) =  \E_i [ \ell(\w^\top \x_i) ] , $$
+%where $\ell$ is a convex function. The Hessian can thus be written as 
+其中， $\ell$是一个凸函数。Hessian矩阵 可以写为
+$$ \nabla^2 f(\w) = \E_i [ \ell'' (\w^\top \x_i) \x_i \x_i^\top ] $$ 
+
+%Thus, the first Newton direction estimator can now be written as
+因此，第一个牛顿方向估计器可以写为
+$$ \tilde{\nabla}^2 f(\w)  \nabla_\w = \E_{j \sim \D }  [ \prod_{i = 1}^j  (I -  \ell'' (\w^\top \x_i) \x_i \x_i^\top ) ] \nabla_\w . $$
+
+%Notice that this estimator can be computed using $j$ vector-vector products if the ordinal $j$ was randomly chosen. 
+注意到这个估计器可以使用 $j$ 向量向量乘积 计算，如果 $j$ 的顺序是随机选择的。
+
+\item
+
+%Non-convex optimization over neural networks: a similar derivation as above shows that the estimator can be computed only using Hessian-vector products. The special structure of neural networks allow this computation in a constant number of backpropagation steps, i.e. linear time in the network size, this is called the ``Pearlmutter trick", see \cite{HessianPearlmutter}.
+神经网络上的非凸优化：与上述类似的推导表明，只能使用Hessian向量积计算估计器。神经网络的特殊结构允许这种计算以恒定数量的反向传播步骤进行，即网络大小中的线性时间，这被称为“Pearlmutter技巧”，请参见\cite{HessianPearlmutter}。
+
+%We note that non-convex optimization presents special challenges for second order methods, since the Hessian need not be positive semi-definite. Nevertheless, the techniques presented hereby can still be used to provide theoretical speedups for second order methods over first order methods in terms of convergence to local minima. The details are beyond our scope, and can be found in \cite{agarwal2017finding}. 
+我们注意到，非凸优化对二阶方法提出了特殊的挑战，因为Hessian不需要是半正定的。尽管如此，这里提出的技术仍然可以用来在收敛到局部极小值方面为二阶方法超越一阶方法提供理论加速。详细信息超出了我们的范围，可以在\cite{agarwal2017finding}中找到。
+\end{enumerate}
+
+
+\paragraph{
+    %Putting everything together.
+    将各部分整合
+    } 
+%These estimators we have studied can be used to create unbiased estimators to the Newton direction of the form 
+我们研究的这些估计器可以用来创建牛顿方向的无偏估计器，形式如下：
+$ \tilde{\nabla}_\x^{-2} \nabla_x $
+for $\tilde{\nabla}^{-2}_\x $ 
+%which satisfies
+满足
+$$\frac{1}{2} {\nabla}^{-2}f(\x_t) \preceq \tilde{\nabla}_t^{-2} \preceq 2 {\nabla}^{-2}f(\x_t) . $$
+
+%These can be incorporated into Algorithm \ref{alg:newton}, which we proved is capable of obtaining fast convergence with approximate Newton directions of this form. 
+这些可以合并到\ref{alg:newton}算法中，我们证明了该算法能够以这种形式的近似牛顿方向获得快速收敛。
+
+
+
+\newpage
+\section{
+    %Exercises
+    练习题
+    }
+
+\begin{enumerate}
+
+\item
+%Prove that a single Newton step for linear regression yields the optimal solution. 
+证明：线性回归的一个单一的牛顿步即可得到最优解。
+
+\item
+%Let $f :\reals^d \mapsto \reals$, and consider the affine transformation $\y = A \x$, for $A \in \reals^{d \times d}$ being a symmetric matrix. Prove that 
+设$f :\reals^d \mapsto \reals$， 考虑放射变换 $\y = A \x$，对于对称矩阵$A \in \reals^{d \times d}$。证明
+$$ \y_{t+1} \leftarrow \y_t - \eta \nabla f(\y_t)$$
+%is equivalent to 
+等价于
+$$ \x_{t+1} \leftarrow \x_t - \eta A^{-2} \nabla f(\x_t) .$$
+
+\item
+%Prove that the function $g(\z)$ defined in phase 2 of the robust Newton algorithm is $\frac{1}{2}$-strongly convex and $2$-smooth. Conclude with a proof of Theorem \ref{thm:MD-sc}.
+证明：鲁棒牛顿算法第二阶段定义的函数 $g(\z)$ 是 $\frac{1}{2}$-强凸和 $2$-光滑的。最后给出定理 \ref{thm:MD-sc} 的证明。
+
+
+\end{enumerate}
+
+
+
+
+
+\newpage
+\section{
+    %Bibliographic Remarks
+    书目说明
+    }
+
+
+%The modern application of Newton's method to convex optimization was put forth in the seminal work of Nesterov and Nemirovski \cite{NesterovNemirovskii94siam} on interior point methods.  A wonderful exposition is Nemirovski's lecture notes \cite{NemirovskiBook}. 
+Nesterov和Nemirovski \cite{NesterovNemirovskii94siam}关于内点法的开创性工作提出了牛顿方法在凸优化中的现代应用。Nemirovski的讲稿 \cite{NemirovskiBook} 是一篇精彩的论述。
+
+%The fact that Hessian-vector products can be computed in linear time for feed forward neural networks was described in \cite{HessianPearlmutter}. 
+%Linear time second order methods for machine learning and the Hessian-vector product model in machine learning was introduced in \cite{agarwal2017second}.  This was extended to non-convex optimization for deep learning in \cite{agarwal2017finding}. 
+前向神经网络的Hessian向量积可以在线性时间内计算，这一事实在\cite{HessianPearlmutter}中进行了描述。
+机器学习的线性时间二阶方法和机器学习中的Hessian向量积模型在\cite{agarwal2017second}中介绍。这被扩展到\cite{agarwal2017finding}中用于深度学习的非凸优化。
+
+
