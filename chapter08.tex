@@ -1,0 +1,144 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Gradient methods
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{
+    %Nesterov Acceleration
+    Nesterov 加速
+    } 
+
+
+%In previous chapters we have studied our bread and butter technique, SGD, as well as two acceleration techniques of adaptive regularization and variance reduction. In this chapter we study the historically earliest acceleration technique, known as Nesterov acceleration, or simply ``acceleration". 
+在前几章中，我们已经研究了基本技术SGD，以及自适应正则化和方差约减两种加速技术。在本章中，我们研究历史上最早的加速技术，称为Nesterov加速，或简称“加速”。
+
+%For smooth and convex functions, Nesterov acceleration improves the convergence rate to optimality to $O(\frac{1}{T^2})$, a quadratic improvement over vanilla gradient descent. Similar accelerations are possible when the function is also strongly convex: an accelerated rate of $e^{-\sqrt{\gamma} T}$, where $\gamma$ is the condition number, vs. $e^{-\gamma T}$ of vanilla gradient descent. This improvement is theoretically very significant. 
+对于光滑和凸函数，Nesterov加速将最优性收敛速度提高到 $O(\frac{1}{T^2})$，这是对原始梯度下降的二次改进。当函数也是强凸函数时，也可能出现类似的加速：加速率为 $e^{-\sqrt{\gamma} T}$，而不是梯度下降的$e^{-\gamma T}$，其中$\gamma$是条件数。这一改进在理论上非常重要。
+
+%However, in terms of applicability, Nesterov acceleration is theoretically the most restricted in the context of machine learning: it requires a smooth and convex objective. More importantly, the learning rates of this method are very brittle, and the method is not robust to noise. Since noise is predominant in machine learning, the theoretical guarantees in stochastic optimization environments are very restricted. 
+然而，就适用性而言，Nesterov加速理论上是机器学习中限制条件最强的：它需要一个平滑且凸的目标函数。更重要的是，这种方法的学习速度非常脆弱，并且对噪声不具有鲁棒性。由于噪声在机器学习中占主导地位，随机优化环境下的理论保证非常有限。
+
+%However, the heuristic of momentum, which historically inspired acceleration, is extremely useful for non-convex stochastic optimization (although  not known to yield significant improvements in theory).
+然而，历史上启发加速的动量启发式算法对于非凸随机优化非常有用（尽管在理论上不知道会产生显著的改进）。
+
+
+
+\section{
+    %Algorithm and implementation
+    算法与实现
+    }
+
+%Nesterov acceleration applies to the general setting of constrained smooth convex optimization:
+Nesterov 加速适用于约束光滑凸优化的一般场景：
+\begin{equation} \label{eqn:shalom5}
+\min_{\x \in \reals^d} f(\x) .
+\end{equation}
+%For simplicity of presentation, we restrict ourselves to the unconstrained convex and smooth case. Nevertheless, the method can be extended to constrained smooth convex, and potentially strongly convex, settings. 
+为了表示的简单性，我们将自己限制在无约束的凸光滑情况下。然而，该方法可以扩展到约束光滑凸和潜在强凸的场景。
+
+%The simple method presented in Algorithm \ref{alg:nesterov} below is computationally equivalent to gradient descent. The only overhead is saving three state vectors (that can be reduced to two) instead of one for gradient descent. 
+%The following simple accelerated algorithm illustrates the main ideas of the technique. 
+下面的算法\ref{alg:nesterov}中给出的简单方法在计算上等价于梯度下降。唯一的开销是保存三个状态向量（可以减少到两个），而不是一个用于梯度下降。
+下面的简单加速算法说明了该技术的主要思想。
+
+\begin{algorithm}[h!]
+\caption{
+    %Simplified Nesterov Acceleration
+    简化的Nesterov加速
+    }
+\label{alg:nesterov}
+\begin{algorithmic}[1]
+%\STATE Input: $f$, $T$, initial point $\x_0 $, parameters $\eta,\beta,\tau$. 
+\STATE 输入: $f$, $T$, 初始点 $\x_0 $, 参数 $\eta,\beta,\tau$. 
+\FOR {$t=1$ to $ T$}
+%\STATE Set $\x_{t+1} = \tau \z_t + (1-\tau) \y_t $, and denote $\nabla_{t+1} = \nabla f(\x_{t+1}) $.
+%\STATE Let $ \y_{t+1} = \x_{t+1} - \frac{1}{\beta} {\nabla}_{t+1}   $
+%\STATE Let  $\z_{t+1}=  \z_{t} - \eta \nabla_{t+1} $
+\STATE 取 $\x_{t+1} = \tau \z_t + (1-\tau) \y_t $, 记 $\nabla_{t+1} = \nabla f(\x_{t+1}) $.
+\STATE 令 $ \y_{t+1} = \x_{t+1} - \frac{1}{\beta} {\nabla}_{t+1}   $
+\STATE 令 $\z_{t+1}=  \z_{t} - \eta \nabla_{t+1} $
+\ENDFOR
+\RETURN $\bar{\x} = \frac{1}{T} \sum_t \x_t  $ 
+\end{algorithmic}
+\end{algorithm}
+
+
+\section{
+    %Analysis
+    分析
+    } 
+
+%The main guarantee for this algorithm is the following theorem. 
+该算法的主要保证为如下定理：
+\begin{theorem}
+%Algorithm \ref{alg:nesterov} converges to an $\eps$-approximate solution to optimization problem \eqref{eqn:shalom5} in $ O( \frac{1}{\sqrt{\eps} } )  $ iterations.
+算法\ref{alg:nesterov}在 $ O( \frac{1}{\sqrt{\eps} } )  $ 次迭代中收敛到优化问题\eqref{eqn:shalom5}的 $\eps$近似解。
+\end{theorem}
+
+%The proof starts with the following lemma which follows from our earlier standard derivations.
+证明从下面的引理开始，引理来自于我们早期的标准推导。
+\begin{lemma} \label{lem:shalom3}
+$$ \eta \nabla_{t+1}^\top  ( \z_{t} - \x^*)  \leq 2{ \eta^2 \beta} (f(\x_{t+1} )- f(\y_{t+1}) ) +  \left[ \| \z_t - \x^*\|^2 - \| \z_{t+1} -\x^*\|^2 \right] . $$
+\end{lemma}
+\begin{proof}[证明]
+%The proof is very similar to that of Theorem \ref{thm:gradient}. By definition of $\z_t$, \footnote{Henceforth we use Lemma \ref{lem:elementary_properties} part 3. This proof of this Lemma shows that for $\y = \x - \frac{1}{\beta} \nabla f(\x)$, it holds that $f(\x) - f(\y) \geq \frac{1}{2\beta} \|\nabla f(\x)\|^2$.}
+这个证明与定理\ref{thm:gradient}非常相似。根据 $\z_t$的定义，\footnote{自此，我们使用引理\ref{lem:elementary_properties}第3部分。这个引理的证明表明，对于$\y = \x - \frac{1}{\beta} \nabla f(\x)$，有 $f(\x) - f(\y) \geq \frac{1}{2\beta} \|\nabla f(\x)\|^2$ 成立。}
+\begin{eqnarray*}
+\| \z_{t+1} - \x^*\|^2 & = \| \z_{t} - \eta \nabla_{t+1} - \x^* \|^2 \\
+& = \| \z_{t} - \x^*\|^2 - \eta \nabla_{t+1}^\top ( \z_{t} - \x^*) + \eta^2 \| \nabla_{t+1}\|^2 \\
+& \leq \| \z_{t} - \x^*\|^2 - \eta \nabla_{t+1}^\top( \z_{t} - \x^*) + 2 {\eta^2 \beta} (f(\x_{t+1}) - f(\y_{t+1}))   & \mbox{ Lemma \ref{lem:elementary_properties} part 3  } 
+\end{eqnarray*}
+
+\end{proof}
+
+
+\begin{lemma} \label{lem:shalom4}
+%For $2 {\eta \beta} = \frac{1 - \tau}{\tau}$, we have that 
+对于 $2 {\eta \beta} = \frac{1 - \tau}{\tau}$, 我们有
+$$ \eta \nabla_{t+1}^\top ( \x_{t+1} - \x^*)  \leq 2 \eta^2 {\beta} (f(\y_t )- f(\y_{t+1}) ) +  \left[ \| \z_t - \x^*\|^2 - \| \z_{t+1} -\x^*\|^2 \right] . $$
+\end{lemma}
+\begin{proof}[证明]
+\begin{eqnarray*}
+& \eta  \nabla_{t+1}^\top  ( \x_{t+1} - \x^*) - \eta  \nabla_{t+1}^\top  ( \z_{t} - \x^*) \\
+& = \eta  \nabla_{t+1}^\top  ( \x_{t+1} - \z_t ) \\
+& = \frac{(1 - \tau) \eta}{\tau}  \nabla_{t+1}^\top  ( \y_t - \x_{t+1} ) &  \tau(\x_{t+1} - \z_t) = (1-\tau) (\y_t - \x_{t+1}) \\
+& \leq \frac{(1 - \tau) \eta}{\tau} ( f(  \y_t ) - f( \x_{t+1} )) . &  \mbox{ convexity}
+\end{eqnarray*}
+%Thus, in combination with Lemma \ref{lem:shalom3}, and the condition of the Lemma, we get the inequality. 
+因此，结合引理和引理的条件，我们得到了不等式。
+\end{proof}
+
+%We can now sketch the proof of the main theorem.
+现在我们可以简单地给出主要定理的证明。
+\begin{proof}
+Telescope Lemma \ref{lem:shalom4} for all iterations to obtain:
+望远镜引理\ref{lem:shalom4}用于所有迭代，以获得：
+\begin{eqnarray*}
+T h_T & = T ( f(\bar{\x}) - f(\x^*)) \\ 
+ & \leq  \sum_t \nabla_t^\top (\x_t - \x^*) \\
+& \leq 2 \eta  {\beta} \sum_t (f(\y_t )- f(\y_{t+1}) ) +  \frac{1}{\eta} \sum_t \left[ \| \z_t - \x^*\|^2 - \| \z_{t+1} -\x^*\|^2 \right] \\
+& \leq  2 \eta  {\beta}  (f(\y_1 )- f(\y_{T+1}) ) +  \frac{1}{\eta}  \left[ \| \z_1 - \x^*\|^2 - \| \z_{T+1} -\x^*\|^2 \right] \\
+& \leq  \sqrt{2  \beta  h_1  D} , & \mbox{optimizing $\eta$}
+\end{eqnarray*}
+%where $h_1$ is an upper bound on the distance $f(\y_1) - f(\x^*)$, and $D$ bounds the Euclidean distance of $\z_t$ to the optimum.  Thus, we get a recurrence of the form
+其中，$h_1$是距离 $f(\y_1) - f(\x^*)$的上界，$D$将 $\z_t$的欧氏距离限定为最佳值。因此，我们得到了形式的一个循环
+$$ h_T \leq \frac{\sqrt{h_1}}{T} .$$
+%Restarting Algorithm \ref{alg:nesterov} and adapting the learning rate according to $h_T$ gives a rate of convergence of $O(\frac{1}{T^2})$ to optimality.
+重新启动算法\ref{alg:nesterov}，并根据 $h_T$调整学习速率，可使算法以 $O(\frac{1}{T^2})$ 的速率收敛到最优。
+\end{proof}
+
+
+
+
+
+
+
+
+\newpage
+\section{
+    %Bibliographic Remarks
+    书目说明
+    }
+
+%Accelerated rates of order $O(\frac{1}{T^2})$ were obtained by Nemirovski as early as the late seventies. The first practically efficient accelerated algorithm is due to Nesterov \cite{Nesterov} , see also \cite{NesterovBook}.  The simplified proof presented hereby is due to \cite{allen2014linear}. 
+早在70年代末，Nemirovski 就获得了 $O(\frac{1}{T^2})$ 量级的加速率。第一个实际有效的加速算法归功于 Nesterov \cite{Nesterov}，另请参见\cite{NesterovBook}。本文给出的简化证明是来自于 \cite{allen2014linear}。
