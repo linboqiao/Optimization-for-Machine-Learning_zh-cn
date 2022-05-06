@@ -1,0 +1,430 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Regularization and AdaGrad
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{
+    %Adaptive Regularization
+    自适应正则化
+    }\label{sec:adagrad}
+
+%In the previous chapter we have studied a geometric extension of online / stochastic / determinisitic gradient descent. The technique to achieve it is called regularization, and we have seen how for the problem of prediction from expert advice, it can potentially given exponential improvements in the dependence on the dimension. 
+在前一章中，我们研究了在线/随机/确定性梯度下降的几何扩展。实现这一点的技术被称为正则化，我们已经看到，对于根据专家建议进行预测的问题，它可能会在对维度的依赖性上得到指数级的改善。
+
+%A natural question that arises is whether we can automatically learn the optimal regularization, i.e. best algorithm from the mirrored-descent class, for the problem at hand?  
+由此产生的一个自然问题是，我们是否能够为手头的问题自动学习最佳正则化，即镜像下降类中的最佳算法？
+
+%The answer is positive in a strong sense: it is theoretically possible to learn the optimal regularization online and in a data-specific way. Not only that, the resulting algorithms exhibit the most significant speedups in training deep neural networks from all accelerations studied thus far. 
+答案在很大程度上是肯定的：从理论上讲，可以在线和以特定于数据的方式学习最优正则化。不仅如此，由此产生的算法在从迄今为止研究的所有加速度训练深度神经网络方面表现出最显著的加速。
+
+
+\section{
+    %Adaptive Learning Rates: Intuition
+    自适应学习率：出发点
+    }
+
+%The intuition for adaptive regularization is simple: consider an optimization problem which is axis-aligned, in which each coordinate is independent of the rest. It is reasonable to fine tune the learning rate for each coordinate separately - to achieve optimal convergence in that particular subspace of the problem, independently of the rest. 
+自适应正则化的出发点很简单：考虑一个轴对齐的优化问题，其中每个坐标独立于其他坐标。分别微调每个坐标的学习速率是合理的---以在问题的特定子空间中实现最优收敛，而不依赖于其他子空间。
+
+%Thus, it is reasonable to change the SGD update rule from $\x_{t+1} \leftarrow \x_t - \eta \nabla_t$, to the more robust
+因此，将SGD更新规则从 $\x_{t+1} \leftarrow \x_t - \eta \nabla_t$ 更改为更健壮的规则是合理的，更改后的规则如下，
+$$ \x_{t+1} \leftarrow \x_t - D_t \nabla_t , $$
+%where $D_t$ is a diagonal matrix that contains in coordinate $(i,i)$ the learning rate for coordinate $i$ in the gradient.  Recall from the previous sections that the optimal learning rate for stochastic non-convex optimization is of the order $O(\frac{1}{\sqrt{t}})$. More precisely, in Theorem \ref{thm:non-convex-sgd}, we have seen that this learning rate should be on the order of $O(\frac{1}{\sqrt{t \sigma^2}})$, where $\sigma^2$ is the variance of the stochastic gradients. The empirical estimator of the latter is
+其中，$D_t$是一个对角线矩阵，在其坐标 $(i,i)$ 中包含梯度中坐标 $i$的学习率。回想一下前面的章节，随机非凸优化的最佳学习率为$O(\frac{1}{\sqrt{t}})$。更准确地说，在定理 \ref{thm:non-convex-sgd}中，我们已经看到这个学习率应该在$O(\frac{1}{\sqrt{t \sigma^2}})$的量级上，其中 $\sigma^2$是随机梯度的方差。后者的经验估计是
+$\sum_{i < t} \|\nabla_i\|^2 $. 
+
+%Thus, the robust version of stochastic gradient descent for smooth non-convex optimization should behave as the above equation, with 
+因此，用于光滑非凸优化的随机梯度下降的稳健版本应符合上述方程，且
+$$ D_t(i,i) = \frac{1}{\sqrt{\sum_{i < t} \nabla_t(i)^2}} .$$
+%This is exactly the diagonal version of the AdaGrad algorithm!  We continue to rigorously derive it and prove its performance guarantee. 
+这正是AdaGrad算法的对角线版本！我们将继续严格推导并证明其收敛性能。
+
+\section{
+    %A Regularization Viewpoint
+    一个正则化视角
+    } 
+
+%In the previous chapter we have introduced regularization as a general methodology for deriving online convex optimization algorithms. 
+%Theorem \ref{thm:mirrordescent} bounds the regret of the Mirrored Descent  algorithm for any strongly convex regularizer as 
+在前一章中，我们介绍了正则化作为导出在线凸优化算法的一般方法。
+定理\ref{thm:mirrordescent}给出任何强凸正则项的镜像下降算法的遗憾界为：
+$$ \regret_T \leq  \max_{\uv \in \K} \sqrt{ 2 \sum_t \|\nabla_t \|_t^{* 2}  B_{R}( \uv||\x_1) }. $$
+%In addition, we have seen how to derive the online gradient descent and the multiplicative weights algorithms as special cases of the RFTL methodology. 
+此外，我们还了解了如何将在线梯度下降和乘法权重算法作为RFTL方法的特例推导。
+
+%We consider the following question: thus far we have thought of $R$ as a strongly convex function. But which strongly convex function should we choose to minimize regret? 
+%This is a deep and difficult question which has been considered in the optimization literature since its early developments. 
+我们考虑以下问题：到目前为止，我们认为$R$是一个强凸函数。但是我们应该选择哪个强凸函数来最小化遗憾呢？
+这是一个深刻而困难的问题，自其早期发展以来，优化社区就一直在考虑这个问题。
+
+%The ML approach is to learn the optimal regularization online. 
+%That is, a regularizer that adapts to the sequence of cost functions and is in a sense the ``optimal'' regularization to use in hindsight. We formalize this in the next section.
+ML方法是在线学习最优正则化。
+也就是说，一个正则项可以适应代价函数的序列，并且在某种意义上是事后使用的“最佳”正则化。我们将在下一节对此进行正式说明。
+
+\section{
+    %Tools from Matrix Calculus
+    来自矩阵计算的工具
+    }
+
+%Many of the inequalities that we are familiar with for positive real numbers hold for positive semi-definite matrices as well. We henceforth need the following inequality, which is left as an exercise,  
+我们熟悉的许多关于正实数的不等式也适用于半正定矩阵。自此，我们需要以下的不等式（证明留作一个练习），
+\begin{proposition} \label{proposition:psd-shalom}
+%For positive definite matrices 
+对于正定矩阵
+$ A \succcurlyeq B \succ 0$:
+$$ 2 \trace( ({A - B})^{1/2}  )  + \trace( A^{-1/2}B)  \leq 2 \trace( {A}^{1/2} ).  $$
+\end{proposition}
+
+
+%Next, we require a structural result which explicitly gives the optimal regularization as a function of the gradients of the cost functions. 	For a proof see the exercises. 
+接下来，我们需要一个结构化结果，它明确给出了最优正则化作为代价函数梯度的函数。有关证明，请参见练习。
+\begin{proposition}
+\label{proposition:solution-inv-trace}
+%Let $A \succcurlyeq 0$. The minimizer of the  following minimization problem:
+令 $A \succcurlyeq 0$. 如下最优化问题:
+\begin{align*}
+\min_X \ \  &  \trace(X^{-1}A)  \\
+\mbox{subject to  }   & X \succcurlyeq 0 \\
+&  \trace(X) \le 1 ,
+\end{align*}
+%is $X = {A^{1/2}}/{ \trace(A^{1/2})}$, and the minimum objective value is  $\trace^2(A^{1/2})$.
+的极小值为 $X = {A^{1/2}}/{ \trace(A^{1/2})}$，最优化目标值为 $\trace^2(A^{1/2})$。
+\end{proposition}
+
+
+\section{
+    %The AdaGrad Algorithm and Its Analysis
+    AdaGrad 及其分析
+    }
+
+
+%To be more formal, let us consider the set of all strongly convex regularization functions with a fixed and bounded Hessian in the set 
+更正式地说，让我们考虑所有强凸正则化函数的集合，其中有一个固定且有界的 Hessian
+$$\forall \x \in \K \ . \ \nabla^2 R(\x) = \nabla^2 \in \H \equaltri \{ X \in \reals^{n \times n} \ ; \ \trace(X) \leq 1 \ , \ X \succcurlyeq 0 \}$$ 
+
+%The set $\H$ is a restricted class of regularization functions (which does not include the entropic regularization). However, it is a general enough class to capture online gradient descent along with any rotation of the Euclidean regularization.  
+集合$\H$是一类受限制的正则化函数（不包括熵正则化）。然而，它是一个足够通用的类，可以捕捉在线梯度下降以及欧氏正则化的任何旋转。
+
+\begin{algorithm}
+	[H] \caption{
+        %AdaGrad (Full Matrix version) 
+        AdaGrad (全矩阵版本)
+        } \label{alg:adagrad}
+	\begin{algorithmic}
+		[1] 
+        %\STATE Input: parameters $\eta, \x_1 \in \K$.
+        \STATE 输入: 参数 $\eta, \x_1 \in \K$
+		%\STATE Initialize: $S_0 = G_0 = \bzero $, 
+		\STATE 初始化: $S_0 = G_0 = \bzero $, 
+		\FOR{$t=1$ to $T$}
+		%\STATE Predict $\x_t$, suffer loss $f_t(\x_t)$.
+		\STATE 预测 $\x_t$, 损失函数 $f_t(\x_t)$.
+		\STATE Update: 
+		%\STATE 更新: 
+		$$S_t = S_{t-1} + \nabla_t \nabla_t^\top, \ G_t = {S_t}^{1/2}$$
+		$$ \yv[t+1] = \xv - \eta G_t^{-1} \nabla_t $$ 
+		$$ \xv[t+1] = \argmin_{\x \in \K} \| \yv[t+1]  - \x\|^2_{G_t} $$ 
+				\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+
+%The problem of learning the optimal regularization has given rise to Algorithm \ref{alg:adagrad}, known as the AdaGrad (Adaptive subGradient method) algorithm. In the algorithm definition and throughout this chapter, the notation $A^{-1}$ refers to the Moore-Penrose pseudoinverse of the matrix $A$. 
+%Perhaps surprisingly, the regret of AdaGrad is at most a constant factor larger than the minimum regret of all RFTL algorithm with regularization functions whose Hessian is fixed and belongs to the class $\H$. The regret bound on AdaGrad is formally stated in the following theorem.  
+学习最优正则化问题产生了算法\ref{alg:adagrad}，称为adagrad（自适应次梯度法）算法。在算法定义中，本章前后记$A^{-1}$表示矩阵$A$的摩尔-彭罗斯伪逆。
+也许令人惊讶的是，AdaGrad的遗憾最多是一个常数因子，大于所有具有正则化函数的RFTL算法的最小遗憾，这些正则化函数的Hessian是固定的，属于$\H$类。下面的定理正式说明了AdaGrad的遗憾边界。
+\begin{theorem}
+\label{theorem:adagrad-main}
+%Let	$\{\x_t\}$ be defined by Algorithm~\ref{alg:adagrad} with parameters $ \eta  = {D}$, where 
+令	$\{\x_t\}$ 由算法~\ref{alg:adagrad}定义，具有参数 $ \eta  = {D}$, 其中
+$$D = \max_{\uv \in \K}  \|\uv - \x_1\|_2 .$$  
+%Then for any $\x^\star \in \K$,
+则对任意 $\x^\star \in \K$,
+\begin{equation*}
+\regret_{T}(\mbox{AdaGrad}) \le 2 D    \sqrt{  \min_{H \in \H} \sum_t \|\nabla_t \|_H^{* 2}  } .
+\end{equation*}
+\end{theorem}
+
+%Before proving this theorem, notice that it delivers on one of the promised accounts: comparing to the bound of Theorem \ref{thm:mirrordescent} and ignoring the diameter $D$ and dimensionality, the regret bound is as good as the regret of RFTL for the class of regularization functions. 
+在证明这个定理之前，请注意，它实现了一个承诺：与定理 \ref{thm:mirrordescent} 的界相比，忽略直径$D$和维数，对于正则化函数类来说，遗憾界与RFTL的遗憾一样好。
+
+%We proceed to prove Theorem \ref{theorem:adagrad-main}. 
+%First, a direct corollary of Proposition \ref{proposition:solution-inv-trace}  is that 
+我们继续证明定理\ref{theorem:adagrad-main}。
+首先，命题\ref{proposition:solution-inv-trace}的一个直接推论是
+\begin{corollary}
+\begin{eqnarray*}
+\sqrt{  \min_{H \in \H} \sum_t \|\nabla_t \|_H^{* 2} }  & = \sqrt{ \min_{H \in \H } \trace (  H^{-1} \sum_t \nabla_t \nabla_t^\top  ) }  \\
+& =  \trace{ \sqrt{ \sum_t \nabla_t \nabla_t^\top } } = \trace(G_T)  % = \trace(\sqrt{S_T - \delta n}) \\ 
+%& = \trace(G_T) - \delta n. 
+\end{eqnarray*}
+\end{corollary}
+
+
+%Hence, to prove Theorem \ref{theorem:adagrad-main}, it suffices to prove the following lemma. 
+因此，为了证明定理\ref{theorem:adagrad-main}，通过证明以下引理即可。
+\begin{lemma}
+$$ \regret_T(\text{AdaGrad}) \leq 2  D \trace(G_T) = 2D  \sqrt{  \min_{H \in \H} \sum_t \|\nabla_t \|_H^{* 2} }  .$$
+\end{lemma}
+\begin{proof}[证明]
+%By the definition of $\by_{t+1}$:
+根据 $\by_{t+1}$ 的定义：
+\begin{equation} \label{eq:update-rule-adagrad}
+\by_{t+1} - \bx^\star = \bx_{t} - \bx^\star - \eta {G_t}^{-1}
+\nabla_t,
+\end{equation}
+%and
+以及
+\begin{equation} \label{eq:A_t-multiply-adagrad}
+G_t (\by_{t+1} - \bx^\star) = G_t (\bx_t - \bx^\star) - \eta 
+\nabla_t.
+\end{equation}
+%Multiplying the transpose of \eqref{eq:update-rule-adagrad} by
+将\eqref{eq:update-rule-adagrad}的转置乘以
+\eqref{eq:A_t-multiply-adagrad} we get
+\begin{gather}
+(\by_{t+1} - \bx^\star)^\top G_t(\by_{t+1} - \bx^\star) = \notag \\
+(\bx_t\! -\! \bx^\star)^\top G_t(\bx_t\! -\! \bx^\star) -
+2 \eta  \nabla_t^\top (\bx_t\! -\! \bx^\star) +
+\eta^2 \nabla_t^\top G_t^{-1} \nabla_t.
+\label{eq:multiplied-adagrad}
+\end{gather}
+%Since $\bx_{t+1}$ is the projection of $\by_{t+1}$ in the norm induced by
+因为 $\bx_{t+1}$ 是 $\by_{t+1}$ 的投影，其中，范数为
+$G_t$,
+%we have (see \S \ref{sec:projections})
+我们有（见 \S \ref{sec:projections}）
+\begin{align*}
+ (\by_{t+1} - \bx^\star)^\top G_t(\by_{t+1} - \bx^\star)  & = \| \by_{t+1} - \bx^\star \|_{G_t}^2  \ge  \| \bx_{t+1} - \bx^\star \|_{G_t}^2   .
+%&  = (\bx_{t+1} - \bx^\star)^\top G_t(\bx_{t+1} - \bx^\star ).
+\end{align*}
+%This inequality is the reason for using generalized projections as opposed to standard projections, which were used in the analysis of \ogd (see \S \ref{section:ogd} Equation \eqref{eqn:ogdtriangle}). 
+%This fact together with \eqref{eq:multiplied-adagrad} gives
+这个不等式是使用广义投影而不是标准投影的原因，标准投影用于分析\ogd（参见\S\ref{section:ogd} 等式\eqref{eqn:ogdtriangle}）。
+这个事实与\eqref{eq:multipled adagrad}一起给出
+\begin{align*}
+\nabla_t^\top (\bx_t \! -\! \bx^\star) &\leq \ \frac{\eta}{2}
+\nabla_t^\top G_t^{-1} \nabla_t  +  \frac{1}{2 \eta} \left( \| \bx_{t} - \bx^\star \|_{G_t}^2 - \| \bx_{t+1} - \bx^\star \|_{G_{t}}^2  \right) .
+\end{align*}
+%Now, summing up over $t=1$ to $T$ we get that
+现在，从 $t=1$ 到 $T$ 相加，我们得到
+\begin{align}  \label{eqn:adagrad-shalom}
+&\sum_{t=1}^T \nabla_t^\top (\bx_t - \bx^\star)
+ \leq \frac{\eta}{2} \sum_{t=1}^T \nabla_t^\top G_t^{-1} \nabla_t +
+\frac{1}{2\eta}  \| \bx_{1} - \bx^\star \|_{G_{0}}^2  \\
+& + \frac{1}{2 \eta} \sum_{t=1}^T  \left( \| \bx_{t} - \bx^\star \|_{G_t}^2 - \| \bx_{t} - \bx^\star \|_{G_{t-1}}^2 \right)   - \frac{1}{2 \eta} \| \bx_{T+1}   - \bx^\star \|_{G_{T}}^2  \notag \\
+%&\quad + \frac{1}{2\eta} \sum_{t=1}^{T-1} (\bx_t - \bx^\star)^\top
+%(G_t - G_{t-1}) (\bx_t - \bx^\star) - \frac{1}{2\eta} (\bx_{T+1} - \bx^\star)^\top G_T (\bx_{T+1} - \bx^\star) \notag \\
+&\leq \frac{\eta}{2} \sum_{t=1}^T \nabla_t^\top G_t^{-1}
+\nabla_t + \frac{1}{2\eta} \sum_{t=1}^{T} (\bx_t\! -\! \bx^\star)^\top
+(G_t - G_{t-1} ) (\bx_t\! -\! \bx^\star) . \notag
+\end{align}
+%In the last inequality we use the fact that $G_0 = \bzero $. %  and thus $\|\bx_1 - \bx^\star\|^2 \leq \delta  D^2$. 
+%We proceed to bound each of the terms above separately. 
+在上一个不等式中，我们使用了$G_0 = \bzero $.%因此$\\bx_1-\bx^\star\^2\leq\delta D^2$。
+我们将分别对上述条款进行约束。
+
+\begin{lemma}
+\label{lemma:trace-bound-adagrad}
+With  $S_t,G_t$  as defined in Algorithm \ref{alg:adagrad},
+取在算法 \ref{alg:adagrad} 中定义的 $S_t,G_t$：
+\begin{equation*}
+\sum_{t=1}^T \nabla_t^\top  G_t^{-1} \nabla_t \le 2 \sum_{t=1}^T \nabla_t^\top G_T^{-1} \nabla_t \leq  2\trace(G_T). 
+\end{equation*}
+\end{lemma}
+\begin{proof}
+%We prove the lemma by induction. The base case follows since 
+我们通过归纳法证明该引理。最基础的情况成立是因为
+\begin{align*}
+\nabla_1^\top G_1^{-1}  \nabla_1  & = \trace( G_1^{-1}  \nabla_1 \nabla_1^\top) \\
+%& \leq  \trace  (G_1^{-1}  (  \nabla_1 \nabla_1^\top +\delta I ) ) \\
+& =   \trace  (G_1^{-1}  G_1^2 ) \\
+& =  \trace(G_1). 
+\end{align*}
+
+
+%Assuming the lemma holds for $T - 1$, we get by  the inductive hypothesis 
+假设对于 $T - 1$ 引理成立，我们通过归纳假设得到
+\begin{align*}
+\sum_{t=1}^T \nabla_t^\top  G_t^{-1} \nabla_t & \le 2 \trace(G_{T-1} )  + \nabla_T^\top  G_T^{-1} \nabla_T \\
+& = 2 \trace(   ({G_{T}^2 - \nabla_T \nabla_T^\top})^{1/2}  )  + \trace( G_T^{-1}  \nabla_T \nabla_T^\top) \\
+& \leq 2 \trace( G_{T} ).  
+\end{align*}
+%Here, the last inequality is due to the matrix inequality \ref{proposition:psd-shalom}. 
+这里，最后一个不等式成立是因为矩阵不等式\ref{proposition:psd-shalom}。
+\end{proof}
+
+\begin{lemma}
+\label{lemma:opt-reg-bound2-adagrad}
+\begin{equation*}
+\sum_{t=1}^{T} (\bx_t\! -\! \bx^\star)^\top (G_t - G_{t-1} ) (\bx_t\! -\! \bx^\star) \leq D^2 \trace(G_T). 
+\end{equation*}
+\end{lemma}
+\begin{proof}
+%By definition $S_t \succcurlyeq S_{t-1}$, and hence $G_t \succcurlyeq G_{t-1}$. Thus, 
+通过定义 $S_t \succcurlyeq S_{t-1}$，可得 $G_t \succcurlyeq G_{t-1}$。因此
+\begin{align*}
+& \sum_{t=1}^{T} (\bx_t\! -\! \bx^\star)^\top (G_t - G_{t-1} ) (\bx_t\! -\! \bx^\star) \\
+& \leq \sum_{t=1}^{T} D^2  \lambda_{\max}( G_t - G_{t-1} ) \\
+& \leq D^2 \sum_{t=1}^{T}  \trace (G_t - G_{t-1})  & A \succcurlyeq 0 \ \Rightarrow \  \lambda_{\max}(A) \leq \trace(A) \\
+& = D^2 \sum_{t=1}^{T}  (\trace (G_t ) - \trace( G_{t-1}))  &  \mbox{ linearity of the trace} \\
+& \leq D^2 \trace(G_T). 
+\end{align*}
+\end{proof}
+
+%Plugging both lemmas into Equation \eqref{eqn:adagrad-shalom},  we obtain
+将上述引理都代入公式   \eqref{eqn:adagrad-shalom}，则我们有
+\begin{align*}
+&\sum_{t=1}^T \nabla_t^\top (\bx_t - \bx^\star)  \leq \ {\eta} \trace(G_T) + \frac{1}{2\eta} D^2 \trace(G_T)   \leq 2 D \trace(G_T).  
+\end{align*} 
+\end{proof}
+
+
+\section{
+    %Diagonal AdaGrad
+    对角化 AdaGrad
+    } 
+
+
+%The AdaGrad algorithm maintains potentially dense matrices, and requires the computation of the square root of these matrices. This is usually prohibitive in machine learning applications in which the dimension is very large.  Fortunately, the same ideas can be applied with almost no computational overhead on top of vanilla SGD, using the diagonal version of AdaGrad given by:
+AdaGrad算法维护潜在的密集矩阵，并需要计算这些矩阵的平方根。在维数非常大的机器学习应用中，这通常是禁止的。幸运的是，使用AdaGrad的对角版本，在vanilla SGD上几乎不需要计算开销，就可以应用相同的思想：
+\begin{algorithm}
+	[H] \caption{
+        %AdaGrad (diagonal version) 
+        AdaGrad （对角矩阵化版本）
+        } \label{alg:diag-adagrad}
+	\begin{algorithmic}
+		[1] 
+        %\STATE Input: parameters $\eta, \x_1 \in \K$.
+		%\STATE Initialize: $S_0 = G_0 = \bzero $, 
+		%\FOR{$t=1$ to $T$}
+		%\STATE Predict $\x_t$, suffer loss $f_t(\x_t)$.
+		%\STATE Update: 
+        \STATE 输入: 参数 $\eta, \x_1 \in \K$.
+		\STATE 初始化: $S_0 = G_0 = \bzero $, 
+		\FOR{$t=1$ to $T$}
+		\STATE 预测 $\x_t$, 计算损失函数值 $f_t(\x_t)$.
+		\STATE 更新: 
+		$$S_t = S_{t-1} + \diag(\nabla_t \nabla_t^\top), \ G_t = {S_t}^{1/2}$$
+		$$ \yv[t+1] = \xv - \eta G_t^{-1} \nabla_t $$ 
+		$$ \xv[t+1] = \argmin_{\x \in \K} \| \yv[t+1]  - \x\|^2_{G_t} $$ 
+				\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+%In contrast to the full-matrix version, this version can be implemented in linear time and space, since diagonal matrices can be manipulated as vectors. Thus, memory overhead is only a single $d$-dimensional vector, which is used to represent the diagonal preconditioning (regularization) matrix, and the computational overhead is a few vector manipulations per iteration. 
+与全矩阵版本相比，该版本可以在线性时间和空间中实现，因为对角矩阵可以作为向量进行操作。因此，内存开销只是一个$d$维向量，用于表示对角预处理（正则化）矩阵，计算开销是每次迭代的几个向量操作。
+
+%Very similar to the full matrix case, the diagonal AdaGrad algorithm can be analyzed and the following performance bound obtained:
+与全矩阵情况非常相似，可以分析对角化AdaGrad算法，并获得以下性能界限：
+
+\begin{theorem}
+\label{theorem:diagonal-adagrad-main}
+%Let	$\{\x_t\}$ be defined by Algorithm~\ref{alg:diag-adagrad} with parameters $ \eta  = {D_\infty}$, where 
+令	$\{\x_t\}$ 由算法 ~\ref{alg:diag-adagrad}定义， 具有参数 $ \eta  = {D_\infty}$, 其中
+$$D_\infty = \max_{\uv \in \K}  \|\uv - \x_1\|_\infty ,$$  
+%and let $\diag(\H)$ be the set of all diagonal matrices in $\H$. Then for any $\x^\star \in \K$,
+并设 $\diag(\H)$ 为所有对角矩阵 $\H$的集合. 则对任意的 $\x^\star \in \K$,
+\begin{equation*} 
+\regret_{T}(\mbox{D-AdaGrad}) \le 2 D_\infty    \sqrt{  \min_{H \in \diag(\H)} \sum_t \|\nabla_t \|_H^{* 2}  } .
+\end{equation*}
+\end{theorem}
+
+
+
+\section{
+    %State-of-the-art: from Adam to Shampoo and beyond
+    最新技术：从Adam到Shampoo以及更多
+    } 
+
+%Since the introduction of the adaptive regularization technique in the context of regret minimization, several improvements were introduced that now compose state-of-the-art. A few notable advancements include: 
+自从在遗憾最小化的背景下引入自适应正则化技术以来，已经引入了一些改进，这些改进现在构成了最先进的技术。一些值得注意的进步包括：
+
+\begin{itemize}
+
+%\item[\bf{RMSProp}] Instead of summing to get $S_t$, the algorithm takes the average. This prevents the learning rate from getting too small, which is useful in non-convex settings.
+\item[\bf{RMSProp}] 该算法不是求和得到 $S_t$，而是取平均值。这可以防止学习速率变得太小，这在非凸情况中很有用。
+
+\item[\bf{AdaDelta}:] 
+%The algorithm keeps an exponential average of past gradients and uses that in the update step.% While there are improvements in practice, there is no worst-case convergence guarantee.
+该算法保持过去梯度的指数平均值，并在更新步骤中使用该值。 虽然在实践中有所改进，但没有最坏情况下的收敛保证。
+		
+\item[\bf{Adam}:] 
+%Adds a sliding window to AdaGrad, as well as adding a form of momentum via estimating the second moments of past gradients and adjusting the update accordingly. 
+为AdaGrad添加一个滑动窗口，并通过估计过去渐变的二阶矩和相应调整更新来添加一种形式的动量。
+		
+\item[\bf{Shampoo}:] 
+%Interpolates between full-matrix and diagonal adagrad in the context of deep neural networks: use of the special layer structure to reduce memory constraints.  
+在深度神经网络的背景下，在全矩阵和对角adagrad之间插值：使用特殊的层结构来减少内存约束。
+
+\item[\bf{AdaFactor}:] 
+%Suggests a Shampoo-like approach to reduce memory footprint even further, to allow the training of huge models.  
+提出了一种类似Shampoo的方法，以进一步减少内存占用，从而允许训练大型模型。
+		
+\item[\bf{GGT}:] 
+%While full-matrix AdaGrad is computationally slow due to the cost of manipulating matrices, this algorithm uses recent gradients (a thin matrix $G$), and via linear algebraic manipulations reduces computation by never computing $GG^\top$, but rather only $G^\top G$, which is low dimensional. 
+虽然全矩阵AdaGrad由于操作矩阵的成本而计算速度较慢，但该算法使用最近的梯度（一个细长的矩阵$G$），并通过线性代数操作，通过不计算 $GG^\top$，而只计算$G^\top G$（这是低维的），从而减少了计算量。
+
+\item[\bf{SM3 , ET}:] 
+%Diagonal AdaGrad requires an extra $O(n)$ memory to store $\text{diag}(G_t)$. These algorithms, inspired by AdaFactor, approximate $G_t$ as a low rank tensor to save memory and computation.
+对角线AdaGrad需要额外的 $O(n)$ 内存来存储  $\text{diag}(G_t)$。这些算法受AdaFactor启发，将$G_t$近似为低秩张量，以节省内存和计算量。
+
+%\item[\bf{SM3}:]
+
+
+\end{itemize}
+	
+
+
+
+
+\newpage
+\section{
+    %Exercises
+    练习题
+    }
+
+\begin{enumerate}
+
+
+\item $^*$
+%Prove that for positive definite matrices $A \succcurlyeq B \succ 0$ it holds that
+证明：对于正定矩阵 $A \succcurlyeq B \succ 0$ 有
+\begin{enumerate}
+\item
+$A^{1/2} \succcurlyeq B^{1/2} $
+\item
+$ 2 \trace( ({A - B})^{1/2}  )  + \trace( A^{-1/2}B)  \leq 2 \trace( {A}^{1/2} ).  $
+\end{enumerate}
+
+\item $^*$ 
+Consider the  following minimization problem where $A \succ 0$:
+考虑如下的最小化问题：
+\begin{align*}
+ \min_X \ \ &  \trace(X^{-1}A) \\
+  \text{subject to  } \ \  & X \succ 0 \\
+ &  \trace(X) \le 1.
+%\label{eqn:inv-trace-prob}
+\end{align*}
+%Prove that its minimizer is given by $X = A^{1/2} / \trace(A^{1/2})$, and the minimum is obtained at $\trace^2(A^{1/2})$.
+其中，$A \succ 0$。
+证明：最小值在 $X = A^{1/2} / \trace(A^{1/2})$ 处取得，最小值为 $\trace^2(A^{1/2})$。
+
+
+	
+\end{enumerate}
+
+
+
+\newpage
+\section{
+    %Bibliographic Remarks
+    书目说明
+    }
+
+%The AdaGrad algorithm was introduced in \cite{DuchiHS10,duchi2011adaptive},  its diagonal  version was also discovered in parallel in \cite{McMahanS10}.  Adam \cite{kingma2014adam} and RMSprop \cite{hinton2012neural} are widely used methods based on adaptive regularization.  A cleaner analysis was recently proposed in \cite{gupta2017unified}, see also \cite{deng2018optimal}. 
+AdaGrad算法是在\cite{DuchiHS10,duchi2011adaptive}中引入的，它的对角化版本也在\cite{McMahanS10}同时行发现的。Adam\cite{kingma2014adam}和RMSprop\cite{hinton2012neural}是基于自适应正则化的广泛使用的方法。最近在\cite{gupta2017unified}中提出了一种更为清晰的分析，另见\cite{deng2018optimal}。
+
+%Adaptive regularization has received much attention recently, see e.g., \cite{OrabonaC10,ward2018adagrad}.  Newer algorithmic developments on adaptive regularization include Shampoo \cite{gupta2018shampoo},  GGT \cite{agarwal2018case}, AdaFactor \cite{shazeer2018adafactor}, Extreme Tensoring \cite{chenET} and SM3 \cite{anil2019memory}.
+最近，自适应正则化受到了广泛关注，例如，\cite{OrabonaC10,ward2018adagrad}。关于自适应正则化的较新算法发展包括Shampoo \cite{gupta2018shampoo}、GGT\cite{agarwal2018case}、AdaFactor\cite{shazeer2018adafactor}、极端张量\cite{chenET}和SM3\cite{anil2019memory}。
