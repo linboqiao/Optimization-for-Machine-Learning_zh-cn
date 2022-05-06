@@ -128,7 +128,7 @@ $$ M_{ij} = \mythreecases {0}{\mbox{用户 $i$ 不喜欢电影 $j$}}{1}{\mbox{�
 
 %The natural goal is to complete the matrix, i.e. correctly assign $0$ or $1$ to the unknown entries. As defined so far, the problem is ill-posed, since any completion would be equally good (or bad), and no restrictions have been placed on the completions.
 一个自然的目标是矩阵补全，将未知的元素赋予 $0$ 或者 $1$。
-正如此前定义的，这个问题是病态的，因为任何补全是同等好或者坏的，并且补全过程没有施加任何限制。
+正如此前定义的，这个问题是不适定的，因为任何补全是同等好或者坏的，并且补全过程没有施加任何限制。
 
 %The common restriction on completions is that the ``true'' matrix has low rank. Recall that if a matrix $X \in \reals^{n \times m}$ has rank $k \leq \rho = \min \{n,m\} $ then it can be written as 
 补全过程中，典型的限制是“真实”的矩阵是低秩的。
