@@ -1,0 +1,254 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Gradient methods
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{
+    %Variance Reduction
+    方差约减
+    }  \label{chapter:variancereduction}
+
+
+%In the previous chapter we have studied the first of our three acceleration techniques over SGD, adaptive regularization, which is a geometric tool for acceleration. 
+在上一章中，我们研究了SGD上的三种加速技术中的第一种，自适应正则化，那是一种用于加速的几何工具。
+%In this chapter we introduce the second first-order acceleration technique, called variance reduction. This technique is probabilistic in nature, and applies to more restricted settings of mathematical optimization in which the objective function has a finite-sum structure. Namely, we consider optimization problems of the form
+在本章中，我们将介绍第二种一阶加速技术，称为方差缩减。这种技术本质上是概率的，并且适用于目标函数具有有限和结构形式的数学优化的更受限制的场景。具体来说，我们考虑如下形式的优化问题：
+\begin{equation}
+\min_{\x \in \K} f(\x) \ , \  f(\x) = \frac{1}{m} \sum_{i=1}^m f_i(\x) \ .  \label{eqn:ERM}
+\end{equation}
+
+%Such optimization problems are canonical in training of ML models, convex and non-convex. However, in the context of machine learning we should remember that the ultimate goal is generalization rather than training. 
+这类优化问题在ML模型的训练中是典型的，无论是凸的还是非凸的。然而，在机器学习的背景下，我们应该记住，最终的目标是泛化，而不是训练。
+
+
+
+\section{
+    %Variance reduction: Intuition
+    方差约减：出发点
+    }
+
+%The intuition for variance reduction is simple, and comes from trying to improve the naive convergence bounds for SGD that we have covered in the first lesson. 
+方差缩减的出发点很简单，它来自于我们在第一课中讨论过的改进SGD的朴素收敛边界。
+
+%Recall  the SGD  update rule $\x_{t+1} \leftarrow \x_t - \eta \hat{\nabla}_t$, in which $\hat{\nabla}_t$ is an unbiased estimator for the gradient such that
+回想一下SGD更新规则 $\x_{t+1} \leftarrow \x_t - \eta \hat{\nabla}_t$，其中 $\hat{\nabla}_t$是梯度的无偏估计量，因此
+$$  \E[\hat{\nabla}_t] = \nabla_t \ ,  \ \E[\| \hat{\nabla}_t \|_2^2] \leq \sigma^2 . $$ 
+%We have seen in Theorem \ref{thm:non-convex-sgd}, that for this update rule, 
+我们在定理\ref{thm:non-convex-sgd}中看到，对于这个更新规则，
+$$ \E \left[ \frac{1}{T} \sum_t \| \nabla_t  \|^2 \right]  \leq  2 \sqrt{\frac{M \beta \sigma^2 }{T} }.$$
+%The convergence is proportional to the second moment of the gradient estimator, and thus it makes sense to try to reduce this second moment. The variance reduction technique attempts to do so by using the average of all previous gradients, as we show next. 
+收敛速度与梯度估计器的二阶矩成正比，因此减少二阶矩是有意义的。方差减少技术试图通过使用之前所有梯度的平均值来实现这一点，如我们接下来所示。
+
+
+\section{
+    %Setting and definitions
+    场景设置与定义
+    }
+
+%We consider the ERM optimization problem over an average of loss functions. 
+%Before we begin, we need a few preliminaries and assumptions:
+我们考虑平均损失函数上的ERM优化问题。
+在开始之前，我们需要一些初步准备和假设：
+\begin{enumerate}
+\item
+%We denote distance to optimality according to function value as   
+我们根据函数值表示到最优性的距离
+$$ h_t = f(\x_t) - f(\x^*) , $$
+and in the $k$'th epoch of an algorithm, we denote $h_t^k =  f(\x_t^k) - f(\x^*)$. 
+在一个算法的第 $k$次数据遍历中，我们记 $h_t^k =  f(\x_t^k) - f(\x^*)$。
+
+
+\item
+%We denote $\tilde{h}_k = \max \left\{ 4 h_0^k \ , \  8 \alpha D_k^2 \right\} $ over an epoch. 
+在一次数据遍历中，我们记 $\tilde{h}_k = \max \left\{ 4 h_0^k \ , \  8 \alpha D_k^2 \right\} $。
+
+\item
+%Assume all stochastic gradients have bounded second moments 
+假设所有的随机梯度有有界的二阶矩：
+$$\| \hat{\nabla_t}\|_2^2 \leq \sigma^2 . $$
+
+\item
+%We will assume that the individual functions $f_i$ in formulation \eqref{eqn:ERM} are also $\hat{\beta}$-smooth and have $\hat{\beta}$-Lipschitz gradient, namely
+我们将假设公式 \eqref{eqn:ERM}中的单个函数 $f_i$ 也是 $\hat{\beta}$ 光滑的，并且具有 $\hat{\beta}$-Lipschitz梯度，即
+$$ \|  {\nabla} f_i(\x) -  {\nabla} f_i(\y)  \| \leq \hat{\beta} \| \x-\y \| . $$
+%This will hold since the estimator we will construct, will be by sampling one loss function out of many, and the gradients are over the same loss. 
+
+\item
+%We will use, proved in Lemma \ref{lem:elementary_properties}, that for $\beta$-smooth and $\alpha$-strongly convex $f$ we have
+正如在引理\ref{lem:elementary_properties}中证明的，对于$\beta$-光滑和$\alpha$-强凸$f$我们有
+$$ h_t \geq \frac{1}{2 \beta} \| \nabla_t \|^2 $$ 
+%and
+以及
+$$\frac{\alpha}{2} d_t^2 =  \frac{ \alpha}{2} \| \x_t - \x^*\|^2  \leq h_t \leq  \frac{1}{2 \alpha} \|\nabla_t\|^2 .   $$
+
+
+
+\item
+%Recall that a function $f$ is $\gamma$-well-conditioned if it is $\beta$-smooth, $\alpha$-strongly convex and $\gamma \leq \frac{\alpha}{\beta}$. 
+回想一下，如果函数 $f$是 $\beta$光滑、$\alpha$强凸，并且$\gamma \leq \frac{\alpha}{\beta}$，那么它是$\gamma$条件良好的。
+
+\end{enumerate}
+
+
+
+\section{
+    %The variance reduction advantage
+    方差约减的优势
+    }
+
+%Consider gradient descent for $\gamma$-well conditioned functions, and specifically used for ML training as in formulation \eqref{eqn:ERM} . It is well known that GD attains linear convergence rate as we now prove for completeness:  
+考虑$\gamma$-条件良好的函数的梯度下降，特别用于ML中如公式\eqref{eqn:ERM}的训练。众所周知，GD达到了线性收敛速度，我们现在证明其完备性：
+
+\begin{theorem}[定理] \label{thm:GD-unconstrained-well-conditioned}
+%For unconstrained minimization of $\gamma$-well-conditioned functions and $\eta_t = \frac{1}{\beta} $,  the Gradient Descent Algorithm \ref{alg:BasicGD} converges as
+对于 $\gamma$-良好条件函数和 $\eta_t = \frac{1}{\beta} $的无约束极小化，梯度下降算法 \ref{alg:BasicGD}收敛为
+$$ h_{t+1} \leq  h_1  e^{- \gamma t} .$$
+\end{theorem}
+\begin{proof}[证明]
+\begin{align*}
+h_{t+1} - h_t & =  f(\x_{t+1})  - f(\x_t) \\
+& \le   \nabla_t^\top (\x_{t+1} - \x_t) + \frac{\beta}{2} \|\x_{t+1} - \x_t\|^2 & \text{ $\beta$-
+%smoothness
+光滑
+} \\
+& =  - \eta_t \|\nabla_t \|^2 + \frac{\beta}{2} \eta_t^2  \|\nabla_t\|^2 & \text{
+    %algorithm defn.
+    算法定义
+    } \\
+& =  - \frac{1}{2\beta} \|\nabla_t \|^2  & \text{
+    %choice of 
+    选择
+    $\eta_t=\frac{1}{\beta}$} \\
+& \leq  - \frac{\alpha}{\beta} h_t.   & \text{
+    %by
+    根据
+    \eqref{eqn:gradlowerbound} } 
+\end{align*}
+%Thus,
+因此
+\begin{eqnarray*}
+h_{t+1}  \leq h_t ( 1 - \frac{\alpha}{ \beta} ) \leq  \cdots \le  h_1 ( 1 - {\gamma})^t \leq h_1 e^{-{\gamma t}} 
+\end{eqnarray*}
+%where the last inequality follows from $1 - x \leq e^{-x}$ for all $x \in \reals$. 
+其中，最后一个不等式成立是因为 $1 - x \leq e^{-x}$ for all $x \in \reals$。
+\end{proof}
+
+%However, what is the overall computational cost? Assuming that we can compute the gradient of each loss function corresponding to the individual training examples in $O(d)$ time, the overall running time to compute the gradient is $O(md)$. 
+然而，总体计算成本是多少？假设我们可以在 $O(d)$ 时间中计算每个损失函数对应的梯度，计算梯度的总运行时间是 $O(md)$。
+
+%In order to attain approximation $\eps$ to the objective, the algorithm requires $O(\frac{1}{\gamma} \log \frac{1}{\eps})$ iterations, as per the Theorem above. Thus, the overall running time becomes $O(\frac{md}{\gamma} \log \frac{1}{\eps})$.
+为了达到目标的近似值$\eps$，根据上述定理，该算法需要 $O(\frac{1}{\gamma} \log \frac{1}{\eps})$ 次迭代。因此，总运行时间变为 $O(\frac{md}{\gamma} \log \frac{1}{\eps})$。
+%As we show below, variance reduction can reduce this running time to be $O(( m + \frac{1}{\tilde{\gamma}^2} ) d \log \frac{1}{\eps})$, where $\tilde{\gamma}$ is a different condition number for the same problem, that is in general smaller than the original.  Thus, in one line, the variance reduction advantage can be summarized as: \\
+我们接下来将展示，方差约减可以降低运行时间为 $O(( m + \frac{1}{\tilde{\gamma}^2} ) d \log \frac{1}{\eps})$，其中 $\tilde{\gamma}$ 是相同问题的一个条件数，相对于原始的条件数一般更小。因此，简单说来，方差减少优势可以总结为：\\
+\begin{center}
+\framebox{ $\frac{md}{\gamma} \log \frac{1}{\eps}  $    $\mapsto$ $( m + \frac{1}{\tilde{\gamma}^2} ) d \log \frac{1}{\eps}$  . }
+\end{center}
+
+\section{
+    %A simple variance-reduced algorithm
+    一个简单的方差约减算法
+    } 
+
+%The following simple variance-reduced algorithm illustrates the main ideas of the technique. The algorithm is a stochastic gradient descent variant which proceeds in epochs. Strong convexity implies that the distance to the optimum shrinks with function value, so it is safe to decrease the distance upper bound every epoch. 
+以下简单的方差缩减算法说明了该技术的主要思想。该算法是一种随机梯度下降算法，分时代进行。强凸性意味着到最优值的距离随着函数值的减小而减小，因此每个历元减小距离上限是安全的。
+
+%The main innovation is in line \ref{line:main-VR}, which constructs the gradient estimator. Instead of the usual trick - which is to sample one example at random - here the estimator uses the entire gradient computed at the beginning of the current epoch. 
+主要的创新与\ref{line:main-VR}是一个系列的，它构造了梯度估计器。在这里，估计器使用当前数据遍历开始时计算的整个梯度，而不是通常的技巧（随机抽样一个例子）。
+
+\begin{algorithm}[h!]
+\caption{
+    %Epoch GD
+    数据遍历GD
+    }
+\label{alg:EpochGD}
+\begin{algorithmic}[1]
+%\STATE Input: $f$, $T$, $\x_0^1 \in \K$, upper bound $D_1 \geq \|\x_0^1 - \x^* \|$, step sizes $\{\eta_t\}$ 
+\STATE 输入: $f$, $T$, $\x_0^1 \in \K$, 上界 $D_1 \geq \|\x_0^1 - \x^* \|$, 步长 $\{\eta_t\}$ 
+\FOR {$k=1$ to $ \log \frac{1}{\epsilon} $}
+%\STATE Let $B_{D_k}(\x_0^k)$ be the ball of radius $D_k$ around $\x_0^k$. 
+\STATE 令 $B_{D_k}(\x_0^k)$ 是球 $D_k$ around $\x_0^k$ 的半径.
+%\STATE compute full gradient $\nabla_0^k = \nabla f(\x_0^k) $
+\STATE 计算所有的梯度 $\nabla_0^k = \nabla f(\x_0^k) $
+\FOR {$t=1$ to $T $}
+%\STATE Sample $i_t \in [m]$ uniformly at random, let $f_t = f_{i_t}$. 
+\STATE 随机均匀采样 $i_t \in [m]$, 令 $f_t = f_{i_t}$. 
+%\STATE \label{line:main-VR} construct stochastic gradient $\hat{\nabla}_t^k =  \nabla f_t (\x_t^k) - \nabla  f_t (\x_0^k) + \nabla_0^k$
+\STATE \label{line:main-VR} 构造随机梯度$\hat{\nabla}_t^k =  \nabla f_t (\x_t^k) - \nabla  f_t (\x_0^k) + \nabla_0^k$
+\STATE 令 $ \y_{t+1}^k = \x_{t}^k -\eta_t {\hat{\nabla}_t^k }    , \  \x_{t+1}= \proj_{B_{D_k}(\x_0^k)} \left( \y_{t+1}  \right) $
+%\STATE Let  $x_{t+1}= \min_{x\in\mathcal{K}} |x-y_{t+1}|$
+\ENDFOR
+\STATE $\x_0^{k+1} = \frac{1}{T} \sum_{t=1}^T \x_t^k$.  $D_{k+1} \leftarrow D_k / 2$. 
+\ENDFOR
+\RETURN ${\x}_{T+1}^0 $ 
+\end{algorithmic}
+\end{algorithm}
+
+%The main guarantee for this algorithm is the following theorem, which delivers upon the aforementioned improvement, 
+该算法的主要保证是以下定理，它提供了上述改进，
+\begin{theorem}
+%Algorithm \ref{alg:EpochGD} returns an $\eps$-approximate solution to optimization problem \eqref{eqn:ERM} in total time 
+算法\ref{alg:EpochGD}返回优化问题\eqref{eqn:ERM}的$\eps$-近似解的总时间为：
+$$ O\left( \left(m+ \frac{1}{\tilde{\gamma}^2} \right) d \log \frac{1}{\eps} \right) . $$
+\end{theorem}
+
+%Let $\tilde{\gamma} = \frac{\alpha}{\hat{\beta}} < \gamma$. Then the proof of this theorem follows from the following lemma. 
+令 $\tilde{\gamma} = \frac{\alpha}{\hat{\beta}} < \gamma$. 则该定理的证明由以下引理可得. 
+
+\begin{lemma}
+For $T = \tilde{O}\left(\frac{1}{\tilde{\gamma}^2} \right)$, we have 
+$$ \E[ \tilde{h}_{k+1} ] \leq \frac{1}{2} \tilde{h}_k . $$
+\end{lemma}
+\begin{proof}
+%By regret bound for strongly convex functions, we have 
+%$$ h_{k+1} = \frac{1}{T} \sum_t h_t^k  \leq \frac{1}{T \alpha} \sum_t \frac{1}{t} \| \hat{ \nabla}_t^k \|^2 $$
+%As a first step, we bound the variance of the gradients. Due to the fact that $\x_t^k \in B_{D_k} ( \x_0^k)$, we have that for $k' > k$, $\|\x_t^k - \x_t^{k'} \|^2 \leq 4 D_k^2$. Thus, 
+在第一步，我们对梯度的方差给出上下界。由于 $\x_t^k \in B_{D_k} ( \x_0^k)$ 这个事实，我们有 $k' > k$, $\|\x_t^k - \x_t^{k'} \|^2 \leq 4 D_k^2$。因此
+\begin{eqnarray*}
+\| \hat{ \nabla}_t^k \|^2  %& \leq  \| \hat{ \nabla}_t^k  - \nabla f(x_t^k) \| + \| \nabla f(x_t^k)  \| \\
+& =   \| { \nabla}f_t (\x_t^k) - {\nabla} f_t (\x_0^k) + \nabla f (\x_0^k)  \|^2  & \mbox{ 
+    %definition
+    定义
+    } \\
+& \leq   2 \| { \nabla}f_t (\x_t^k) - {\nabla} f_t (\x_0^k) \|^2 + 2 \| \nabla f (\x_0^k)  \|^2 &  (a+b)^2 \leq 2a^2 + 2b^2  \\
+& \leq   2 \hat{\beta}^2 \| \x_t^k - \x_0^k \|^2 +  4 \beta h^k_0  & \mbox{
+    %smoothness
+    平滑性
+    }  \\
+& \leq   8 \hat{\beta}^2 D_k^2  +  4 \beta h^k_0  & \mbox{
+    %projection step
+    投影步
+    }  \\
+& \leq    \hat{\beta}^2 \frac{1}{\alpha} \tilde{h}_k  + 4 \beta h^k_0  \leq \tilde{h}_k ( \frac{\hat{\beta}^2 }{\alpha} + \beta)  \\
+\end{eqnarray*}
+%Next, using the regret bound for strongly convex functions, we have 
+接下来，通过使用强凸函数的遗憾界，我们有
+\begin{eqnarray*}
+\E[ h^{k+1}_0]  & \leq  \E[ \frac{1}{T} \sum_t h_t^k ] & \mbox{Jensen} \\
+&  \leq \frac{1}{\alpha T } \E[ \sum_t \frac{1}{t} \| \hat{ \nabla}_t^k \|^2]  & \mbox{ Theorem \ref{thm:gradient2} } \\
+& \leq  \frac{1}{\alpha T} \sum_t \frac{1}{t}   \tilde{h}_k ( \frac{\hat{\beta}^2}{\alpha} + \beta) & \mbox{ above} \\
+& \leq \frac{\log T }{ T} \tilde{h}_k  (\frac{1}{ \tilde{\gamma}^2} + \frac{1}{\gamma} ) & \tilde{\gamma} = \frac{\alpha}{\hat{\beta}}  
+\end{eqnarray*}
+Which implies the Lemma by choice of $T$, definition of $\tilde{h}_k = \max \left\{ 4 h_0^k \ , \ 8 \alpha D_k^2 \right\} $, and exponential decrease of $D_k$.
+这意味着引理由$T$选择， $\tilde{h}_k = \max \left\{ 4 h_0^k \ , \ 8 \alpha D_k^2 \right\} $ 定义，并以 $D_k$的指数递减。
+
+%The expectation is over the stochastic gradient definition, and is required for using Theorem \ref{thm:gradient2}. 
+该期望在随机梯度定义之上，是使用定理\ref{thm:gradient2}所要求的。
+\end{proof}
+
+%To obtain the theorem from the lemma above, we need to strengthen it to a high probability statement using a martingale argument. This is possible since the randomness in construction of the stochastic gradients is i.i.d. 
+为了从上面的引理中得到这个定理，我们需要使用鞅参数将它强化为一个高概率的陈述。这是可能的，因为随机梯度构造的随机性是独立同分布的。
+
+%The lemma now implies the theorem by noting that $O(\log \frac{1}{\eps})$ epochs suffices to get $\eps$-approximation. Each epoch requires the computation of one full gradient, in time $O(md)$, and $\tilde{O}(\frac{1}{\tilde{\gamma}^2})$ iterations that require stochastic gradient computation, in time $O(d)$. 
+注意到 $O(\log \frac{1}{\eps})$ 次数据遍历足以得到$\eps$近似值，通过引理可得这个定理。每次数据遍历都需要计算一个完整的梯度（需要时间为$O(md)$），而随机梯度计算的迭代次数为 $\tilde{O}(\frac{1}{\tilde{\gamma}^2})$ ，时间为$O(d)$。
+
+
+
+\newpage
+\section{
+    %Bibliographic Remarks
+    书目说明
+    }
+
+%The variance reduction technique was first introduced as part of the SAG algorithm \cite{schmidt2017minimizing}.  Since then a host of algorithms were developed using the technique. The simplest exposition of the technique was given in \cite{johnson2013accelerating}. The exposition in this chapter is developed from the Epoch GD algorithm \cite{hazan2014beyond}, which uses a related technique for stochastic strongly convex optimization, as developed in \cite{zhang2013linear}.
+方差缩减技术最初是作为SAG算法\cite{schmidt2017minimizing}的一部分引入的。从那时起，使用该技术开发了一系列算法。关于这项技术最简单的阐述见\cite{johnson2013accelerating}。本章中的论述是从数据遍历 GD算法  \cite{hazan2014beyond}发展而来的，该算法使用了随机强凸优化的相关技术，如在\cite{zhang2013linear}中开发的。
+
